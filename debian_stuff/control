@@ -1,0 +1,15 @@
+Source: when
+Section: misc
+Priority: optional
+Maintainer: Ben Crowell <debiancrowell05@lightandmatter.com>
+Build-Depends: debhelper (>= 4.0.0), perl (>= 5.0.0)
+Standards-Version: 3.6.1
+
+Package: when
+Architecture: all
+Depends: ${shlibs:Depends}, ${misc:Depends}
+Description: a personal calendar program
+ When is a minimalistic personal calendar. It runs from the command
+ line, and it uses a plain text file format, which you can edit
+ using your favorite editor. It doesn't depend on any libraries,
+ so it's very easy to install.

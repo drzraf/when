@@ -1,0 +1,3001 @@
+#!/usr/bin/perl 
+
+#----------------------------------------------------------------
+# Version number
+#----------------------------------------------------------------
+our $version = "1.1.30"; 
+
+#----------------------------------------------------------------
+# Short documentation
+#
+# This is what is printed out if you do `when --help'. The more
+# detailed documentation is after this in the source code, and
+# the man page is generated from that.
+#----------------------------------------------------------------
+
+sub documentation {
+return <<'DOC';
+   When
+   a simple personal calendar
+   (c) 2003-2011 Benjamin Crowell
+   This free software is copyleft licensed under the same terms as Perl, or,
+   at your option, under version 2 of the GPL license.
+
+   The full documentation for When is in its man page, which you can access
+   (after installing the software) by doing the command `man when'. If you want
+   to read the documentation without first installing the software, use the
+   command `nroff -man when.1', or go to http://www.lightandmatter.com/when/when.html
+   and look at the reproduction of the man page there.
+
+   To install the program, do the command `make install' while logged in as
+   the root user.
+
+   The basic idea is just to type `when' at the command line. The first time
+   you run the program, it will prompt you for some setup information. To
+   edit you calendar file in your favorite editor, do `when e'. The basic
+   format of the calendar file is like this:
+        2003 feb 3 , Fly to Stockholm to accept Nobel Prize.
+   Once you have a calendar file, running the program as plain old `when'
+   from the command line will print out the things on your calendar for the
+   next two weeks.
+
+DOC
+}
+
+#----------------------------------------------------------------
+# Long documentation
+#
+# The man page is generated from this, using pod2man.
+#----------------------------------------------------------------
+
+=head1 NAME
+
+When - a minimalistic personal calendar program
+
+=head1 SYNOPSIS
+
+when
+
+when [options] [commands]
+
+The basic idea is just to type `when' at the command line. The first time
+you run the program, it will prompt you for some setup information. To
+edit you calendar file in your favorite editor, do `when e'. The basic
+format of the calendar file is like this:
+
+        2003 feb 3 , Fly to Stockholm to accept Nobel Prize.
+
+Once you have a calendar file, running the program as plain old `when'
+from the command line will print out the things on your calendar for the
+next two weeks.
+
+=head1 COMMANDS
+
+=over 8
+
+=item B<i>
+
+Print upcoming items on your calendar. (This is the default command.)
+
+=item B<c>
+
+Print calendars (grids like on a wall calendar, not showing items)
+for last month, this month, and next month.
+
+=item B<e>
+
+Invoke your favorite editor to edit your calendar file.
+
+=item B<w>,B<m>,B<y>
+
+Print items for the coming week, month, or year, rather
+than for the default period of two weeks.
+
+=item B<j>
+
+Print the modified Julian day (useful for finding the time interval
+between two dates).
+
+=item B<d>
+
+Print nothing but the current date.
+
+=back
+
+=head1 OPTIONS
+
+All of the following options, except --help, can be set in the preferences
+file. True/false options can be set on the command line as --option or
+--nooption, and in the preferences file by setting the option to 0 or 1.
+
+=over 8
+
+=item --help
+
+Prints a brief help message.
+
+=item --version
+
+Prints a brief message, including a statement of what version of the
+software it is.
+
+=item --language=LANG
+
+Set the language to LANG. See the section below on internationalization.
+This option is not normally needed, because the language is automatically
+detected.
+
+=item --future=DAYS
+
+How many days into the future the report extends. Default: 14
+
+=item --past=DAYS
+
+How many days into the past the report extends. Like the --future option,
+--past is interpreted as an offset relative to the present date, so normally
+you would want this to be a negative value. Default: -1
+
+=item --calendar=FILE
+
+Your calendar file. The default is to use the file pointed to
+by your preferences file, which is set up the first time you
+run When.
+
+=item --editor=COMMAND
+
+Command used to invoke your editor. Default: "emacs -nw"
+Example:  when --editor="vim"
+
+=item --wrap=COLUMNS
+
+Number of columns of text for the output (or 0 if you don't want
+wrapping at all). Default: 80
+
+=item --[no]wrap_auto
+
+Attempt to detect the width of the terminal, and set the width of the output
+accordingly. This applies only if the output is a tty, and is subject to any
+maximum set by --wrap_max. Overrides any value set by --wrap. Default: no
+
+=item --wrap_max=COLUMNS
+
+Maximum number of columns of text for the output (or -1 if you don't want
+any maximum). Useful in combination with --wrap_auto to preserve legibility
+on very large terminal windows. Default: -1
+
+=item --rows=COLUMNS
+
+Number of rows of text that will fit in the terminal window.
+When listing your calendar, output will be truncated to this
+length, unless that would result in listing less than three days
+into the future. This behavior is overridden (the maximum number
+of rows is set to infinity) if the --future option is given
+explicitly, or if the m or y command is
+used.
+Default: 40
+
+=item --[no]rows_auto
+
+Attempt to detect the height of the terminal, rather than using the value
+set in the --rows option. This applies only if the output is a tty.
+Overrides any value set by --rows. Default: yes
+
+=item --[no]header
+
+Print headers at the top of the output of the i, c, w, m and y commands.
+Default: yes
+
+=item --[no]paging
+
+When the output is longer than the value set by rows or rows_auto, use
+a pager to display the output. (The PAGER and LESS environment variables
+are respected. If PAGER isn't set, the default is "less.") Default: yes
+
+=item --paging_less_options
+
+Extra options if the pager is "less." Default: "-rXFE"
+
+=item --[no]filter_accents_on_output
+
+Whether to change accented characters to unaccented ones.
+Default: yes, unless the $TERM environment variable equals "mlterm"
+or "xterm".
+
+=item --[no]styled_output
+
+If the output is a terminal, should we use ANSI terminal codes for
+styling? Default: yes
+
+=item --[no]styled_output_if_not_tty
+
+Style the output even if it's not a terminal. Default: no
+
+=item --calendar_today_style=STYLE
+
+=item --items_today_style=STYLE
+
+The first of these says how to style today's date when doing the calendar (c) command.
+The second says how to style the word ``today'' when doing the items (i) command.
+Defaults: bold
+
+The styling of output can be specified using the following keywords:
+bold, underlined, flashing.
+To change the color of the text, use these:
+fgblack, fgred, fggreen, fgyellow, fgblue, fgpurple, fgcyan,
+fgwhite.
+To change the background color, use similar keywords, but with bg instead
+of fg. Example:
+when --calendar_today_style="bold,fgred,bgcyan" c
+
+=item --prefilter
+
+Pipe the calendar file through a program before reading it. Default: ""
+
+=item --now="Y M D"
+
+Pretend today is some other date.
+
+=item --[no]neighboring_months
+
+The default behavior of "when c" is to print out calendars for
+last month, this month, and next month. By choosing --noneighboring_months,
+you can avoid printing out months not included in the range set by
+--past and --future.
+
+=item --[no]monday_first
+
+Start the week from Monday, rather than Sunday. Default: no
+
+=item --[no]orthodox_easter
+
+Calculate Easter according to the Orthodox Eastern Church's calendar. Default: no
+
+=item --[no]ampm
+
+Display the time of day using 12-hour time, rather than 24-hour time. Also
+affects the parsing of input times.
+Default: yes
+
+=item --auto_pm=x
+
+When times are input with hours that are less than x, and AM or PM is not explicitly
+specified, automatically assume that they are PM rather than AM. Default: 0
+
+=item --[no]literal_only
+
+Only display items that are given as literal dates, e.g., "2008 jul 4". Don't
+display items that are defined by expressions, e.g., periodic items like
+"w=thu". Default: no
+
+=item --test_expression
+
+=item --bare_version
+
+=item --make_filter_regex
+
+=item --test_accent_filtering
+
+These options are used internally for building and testing.
+
+=back
+
+
+=head1 DESCRIPTION
+
+B<When> is an extremely simple personal calendar program, aimed at the Unix
+geek who wants something minimalistic. It can keep track of things you need to
+do on particular dates. There are a lot of calendar and ``personal information
+manager'' programs out there, so what reasons are there to use B<When>?
+
+=over 4
+
+=item It's a very short and simple program, so you can easily tinker with it
+  yourself.
+
+=item It doesn't depend on any libraries, so it's easy to install. You should
+  be able to install it on any system where Perl is available, even if you
+  don't have privileges for installing libraries.
+
+=item Its file format is a simple text file, which you can edit in your favorite
+  editor.
+
+=back
+
+Although B<When> should run on virtually any operating system where Perl is
+available, in this document I'll assume you're running some
+flavor of Unix.
+
+=head1 INSTALLATION AND GETTING STARTED
+
+While logged in as root, execute the following command:
+
+       make install
+
+Run B<When> for the first time using this command:
+
+       when
+
+You'll be prompted for some information needed to set up your calendar file.
+
+=head1 USE
+
+If you run B<When> again after the initial setup run, it should print out a
+single line of text, telling you the current date. It won't print out
+anything else, because your calendar file is empty, so you don't have
+any appointments coming up.
+
+Now you can start putting items in your calendar file. Each item is a line
+of text that looks like this:
+
+        2003 feb 3 , Fly to Stockholm to accept Nobel Prize.
+
+A convenient way to edit your calendar file is with this command:
+
+        when e
+
+This pops you into your favorite editor (the one you chose when you ran
+B<When> for the first time).
+
+The date has to be in year-month-day format, but you can either spell the
+month or give it as a number. (Month names are case-insensitive, and it
+doesn't matter if you represent February as F, Fe, Feb, Februa, or whatever.
+It just has to be a unique match. You can give a trailing ., which will be
+ignored. In Czech, "cer" can be used as an abbreviation for Cerven, and "cec" for
+Cervenec.) Extra whitespace is
+ignored until you get into the actual text after the comma. Blank lines
+and lines beginning with a # sign are ignored.
+
+If you now run B<When>, it will print out a list of all the items in your
+calendar file that fall within a certain time interval. (The interval starts from
+yesterday. B<When> tries to pick the end of the time interval so that its output
+fits on your terminal window, but it will always be at least three days, and
+no more than two weeks in the future.)
+To see all your items for the next month, do ``when m'',
+and similarly for a year, y, or a single week, w.
+
+If you do ``when c'', B<When> prints out calendars for last month, this month,
+and next month.
+
+You can combine these commands. For instance, ``when cw'' will print
+out calendars, and then show you your items for the next week.
+
+For events that occur once a year, such as birthdays and annivesaries,
+you can either use a * in place of the year,
+
+        * dec 25 , Christmas
+
+or use a year with an asterisk:
+
+        1920* aug 29 , Charlie Parker turns \a, born in \y
+
+In the second example, \a tells you how old Charlie Parker would be this
+year, and \y reproduces the year he was born, i.e., the output would be:
+
+        today     2003 Aug 29 Charlie Parker turns 83, born in 1920
+
+For things you have to do every week, you can use an expression of the
+form w=xxx, where xxx is the first few letters of the name of the day
+of the week in your language. (You have to supply enough letters to
+eliminate ambiguity, e.g., in English, w=th or w=tu, not just w=t.)
+Example:
+
+        w=sun , go to church, 10:00
+
+You can actually do fancier tests than this as well; for more information,
+see the section 'fancy tests' below.
+Here's how to set up some common holidays:
+
+        m=jan & w=mon & a=3 , Martin Luther King Day
+        * feb 14 , Valentine's Day
+	m=feb & w=mon & a=3 , Washington's Birthday observed
+        m=may & w=sun & a=2 , Mother's Day
+        m=may & w=mon & b=1 , Memorial Day
+        m=jun & w=sun & a=3 , Father's Day
+	* jul 4 , Independence Day
+        m=sep & w=mon & a=1 , Labor Day
+	m=oct & w=mon & a=2 , Columbus Day
+        m=oct & w=mon & a=2 , Thanksgiving (Canada)
+	* nov 11 , Armistice Day
+        m=nov & w=thu & a=4 , Thanksgiving (U.S.)
+        e=47 , Mardi Gras
+        e=46 , Ash Wednesday
+        e=7 , Palm Sunday
+        e=0 , Easter Sunday        
+        e=0-49 , Pentecost (49 days after easter)
+
+In the U.S., when certain holidays fall on a weekend, federal workers, as well as many
+private employees, get a Monday or Friday off. The full list is given at http://www.opm.gov/operating_status_schedules/fedhol/2011.asp.
+If you want a reminder of both the holiday and the day you get off from work, here's an example of how you would set that up:
+
+	* jul 4 , Independence Day
+	m=jul & c=4 , Independence Day (observed as a federal holiday)
+
+=head1 INTERNATIONALIZATION
+
+B<When> has at least partial support for Czech, Danish, Dutch,
+English, French, German, Greek, Hungarian, Italian, Polish, Romanian, and Spanish.
+If B<When> has not been translated into your language,
+or has only been partially translated, the text that hasn't been translated 
+will be displayed in English.
+B<When> should automatically detect what language you use (via your $LANG
+environment variable), and if B<When> has been translated into that language,
+that's what you'll get -- B<When>'s output will be in your language, and
+B<When> will also expect you to use that language in your calendar file
+for the names of the months and the days of the week.
+
+Your calendar file must be in UTF-8 (or ASCII, which is a subset of UTF-8).
+If your calendar file is in some other encoding, such as ISO-8859, B<When>
+will typically be able to detect that, and will refuse to read it.
+Command-line options can also contain UTF-8.
+
+Some terminal emulators
+(aterm, ...) display accented characters as garbage,
+but others (mlterm, xterm...) can display them correctly.
+B<When> checks the $TERM environment variable, and if it equals
+"mlterm" or "xterm", then accented characters will be displayed. Otherwise,
+they are filtered out of the output.
+You can override this by putting a line like
+
+        filter_accents_on_output = 0
+
+or
+
+        filter_accents_on_output = 1
+
+in your ~/.when/preferences file. I'd be interested in hearing from
+any users who can suggest a better mechanism for this than attempting to
+interpret the $TERM variable.
+
+On input, accents are allowed, but not required, e.g., in a French-language
+input file, the date 2005 Fev 17 could be given with an accented e or an
+unaccented one, and either will work. If an input month or day of the week does
+not match any of the ones for your language, then B<When> will try
+to interpret it as English instead.
+
+You can put a line like
+
+        language = fr
+
+in your preferences file to set your language, or supply the --language
+option on the command line, but that's not necessary if your $LANG
+environment variable is set correctly.
+
+=head1 FORMAT OF THE PREFERENCES FILE
+
+Each line consists of something like this:
+
+        variable = value
+
+Whitespace is ignored everywhere except inside the value. Variable names
+are case-insensitive. Blank lines are ignored.
+
+=head1 MORE EXAMPLES
+
+A useful command to have your shell execute when you log in is this:
+
+        when --past=0 --future=1
+
+To print out a calendar for a full year to come:
+
+        when --past=0 --future=365 c
+
+=head1 POPPING UP YOUR CALENDAR WHEN YOU LOG IN
+
+Your calendar doesn't do you any good if you forget to look at it
+every day. An easy way to make it pop up when you log in is to
+make your .xsession or .xinitrc file look like this:
+
+        /usr/bin/when --past=0 --future=1 &>~/when.today
+        emacs -geometry 70x25 -bg bisque ~/when.today &
+        startkde
+
+The .xsession file is used if you have a graphical login manager
+set up on your machine, the .xinitrc if you don't. In this example,
+the first line outputs your calendar to a file. The complete path
+to the B<When> program is given, because your shell's path variable
+will not yet be properly initialized when this runs. The second
+line pops up a GUI emacs window, which is distinctively colored so
+that it will catch your eye. The last line starts your window
+manager, KDE in this example. Whatever window manager you use,
+just make sure to retain the preexisting line in the file that starts
+it, and make sure that that line is the very last one in the file.
+
+=head1 SORTING BY TIME OF DAY
+
+If you want the various items that lie on a single day to be printed out in
+a certain order, the simplest way to do it is to put them in that order in the
+input file. That method won't work, however, when some of the items lie on dates
+that are determined by expressions rather than given explicitly. The most common
+reason for wanting to do this kind of thing is that you have things you need to do
+at certain times during the day, and you want them sorted out by time. In this situation,
+you can give a time at the beginning of the item's text, and B<When> will recognize that
+and sort the items by time. Times can be in h:mm or hh:mm format. If --ampm is set,
+then an optional
+suffix a or p can be used for AM or PM, e.g., 9:30a for 9:30 AM. If you use AM/PM
+time, then you can also, e.g., set --auto_pm=9 so that hours less than 9 are automatically
+assumed to be PM. Here is an example:
+
+        2010 apr 25 , 7:00 dinner at the anarcho-syndicalist commune
+        w=sun , 10:00 church
+
+April 25, 2010 is a Sunday, so on that date both of these items will be displayed.
+If --auto_pm is set to 8 or higher, then the 7:00 will automatically be interpreted
+as 7:00 PM, and the dinner date will be displayed below the morning church ceremony.
+
+=head1 FANCY TESTS
+
+In addition to w, discussed above, there are a bunch of other variables
+you can test:
+
+	w  -  day of the week
+	m  -  month
+	d  -  day of the month
+	y  -  year
+	j  -  modified Julian day number
+	a  -  1 for the first 7 days of the month, 2 for the next 7, etc.
+	b  -  1 for the last 7 days of the month, 2 for the previous 7, etc.
+	c  -  on Monday or Friday, equals the day of the month of the nearest weekend day; otherwise -1
+	e  -  days until this year's (Western) Easter
+	z  -  day of the year (1 on New Year's day)
+
+You can specify months either as numbers, m=2, or as names in your language, m=feb.
+You can also use the logical operators & (and) and | (or). The following 
+example reminds you to pay your employees on the first and fifteenth
+day of every month:
+
+        d=1 | d=15 , Pay employees.
+
+This example reminds you to rehearse with your band on the last Saturday
+of every month:
+
+        w=sat & b=1 , Rehearse with band.
+
+The following two lines
+
+        * dec 25 , Christmas
+        m=dec & d=25 , Christmas
+
+both do exactly the same thing, but the first version is easier to
+understand and makes the program run faster. (When you do a test, B<When>
+has to run through every day in the range of dates you asked for,
+and evaluate the test for each of those days. On my machine, if I
+print out a calendar for a whole year, using a file with 10 simple
+tests in it, it takes a few seconds.)
+Parentheses can be used, too.
+
+Depending on your nationality and religion, you probably have a bunch
+of holidays that don't lie on fixed dates. In Christianity, many of
+these (the "movable feasts") are calculated relative to Easter Sunday,
+which is why the e variable is useful.
+
+There is a not operator, !:
+
+        w=fri & !(m=dec & d=25) , poker game
+
+There is a modulo operator, %, and a subtraction operator, -. 
+Using these, along with the j variable, it is just barely possible
+for B<When>'s little parser to perform the following feat:
+
+        !(j%14-1) , do something every other Wednesday
+
+The logic behind this silly little piece of wizardry goes like this.
+First, we determine, using the command `when j --now="2005 jan 26"',
+that the first Wednesday on which we want to
+do this has a Julian day that equals 1, modulo 14. Then we write this
+expression so that if it's a Wednesday whose Julian day equals 1,
+modulo 14, the quantity in parentheses will be zero, and taking its logical
+negation will yield a true value.
+
+The operators' associativity and order of priority (from highest to lowest) is
+like this:
+
+	left	%
+	left	-
+	left	< > <= >=
+	left	= !=
+	right	!
+        left	&
+	left	|
+
+
+=head1 INCLUDING FILES
+
+If your calendar file gets too large, you may prefer to split it up into
+smaller chunks -- perhaps one for birthdays, one for Tibetan holidays, etc.
+An easy way of accomplishing this is to install the program m4,
+put the line
+
+	prefilter = m4 -P
+
+in your preferences file,
+and then put lines in your calendar file like this:
+
+	m4_include(/home/yourname/.when/birthdays)
+
+=head1 ENVIRONMENT
+
+B<$LANG> to automatically detect the user's language
+
+B<$TERM> to try to figure out if the terminal emulator can display
+accented characters
+
+=head1 FILES
+
+B<$HOME>/.when/calendar - The default location for the
+user's calendar (pointed to by the preferences file)
+
+B<$HOME>/.when/preferences - The user's preferences.
+
+=head1 OTHER INFORMATION
+
+B<When>'s web page is at
+
+        http://www.lightandmatter.com/when/when.html   ,
+
+where you can always find the latest version of the software.
+There is a page for B<When> on Freshmeat, at
+
+        http://freshmeat.net/projects/when/   ,
+
+where you can give comments, rate it, and subscribe to e-mail announcements of new releases.
+
+=head1 AUTHOR
+
+B<When> was written by Ben Crowell, http://www.lightandmatter.com/personal/.
+Dimiter Trendafilov wrote the new and improved parser for date expressions.
+
+=head1 COPYRIGHT AND LICENSE
+
+B<Copyright (C)> 2003-2012 by Benjamin Crowell.
+
+B<When> is free software; you can redistribute it and/or modify it
+under the terms of the GPL, or, optionally, Perl's license.
+
+=cut
+
+#================================================================
+#
+# beginning of real code
+#
+#================================================================
+
+binmode STDOUT, ":utf8"; # eliminates "Wide character in print" error in Czech
+use open ":encoding(utf8)"; # otherwise utf8 in input files is read as if 1 character==1 byte
+# The combination of two lines above is needed in order to get the following to work:
+#    - Czech characters coded into the source print without the "Wide character in print" error.
+#    - Accented characters and Greek characters in the input file are read properly and printed back out properly.
+# When testing this, make sure to use a terminal such as mlterm that can handle accented characters,
+# and make sure that the --nofilter_accents_on_output has not been set automatically based on the
+# value of the $TERM variable. (Using mlterm prevents this.)
+# See "man perlunicode".
+# An example of the confusing way all of this works:
+#    perl -e 'binmode STDOUT,":utf8"; print "\x{11b}\x{e9}"'
+#    perl -e 'binmode STDOUT,":utf8"; print "\x{11b}\x{e9}"' >a.a
+#    perl -e 'binmode STDOUT,":utf8"; open(F,"<a.a"); $x=<F>; close F; print $x'
+#    perl -e 'binmode STDOUT,":utf8"; open(F,"<a.a"); $x=<F>; close F; print length $x'
+#    perl -e 'use open ":encoding(utf8)"; binmode STDOUT,":utf8"; open(F,"<a.a"); $x=<F>; close F; print $x'
+#    perl -e 'use open ":encoding(utf8)"; binmode STDOUT,":utf8"; open(F,"<a.a"); $x=<F>; close F; print length $x'
+
+use utf8; # Indicates that source can contain utf8, which we use for the Greek translation.
+use locale;
+
+use strict;
+use Getopt::Long; # Comes with the Perl distribution.
+
+#----------------------------------------------------------------
+# Defaults for the preferences:
+#----------------------------------------------------------------
+
+our %preferences=(
+  'language'=>'en',                 # user's language; this is normally overridden by $LANG environment var.
+  'past'=>-1,                       # how many days into the past the report extends
+  'future'=>14,                     # ...and how far into the future
+  'calendar'=>'~/.when/calendar',   # where to find the calendar file
+  'wrap'=>80,                       # 0 means don't wrap; otherwise, wrap display to this many columns
+  'wrap_auto'=>0,                   # Try to detect width of terminal automatically, if it's a TTY.
+  'wrap_max'=>-1,                   # If positive, sets a maximum with, overriding wrap_auto if necessary.
+  'rows'=>40,                       # try to limit output to less than this number of lines
+  'rows_auto'=>1,                   # Try to detect width of terminal automatically, if it's a TTY.
+  'paging'=>1,                      # Use a pager, if it's a TTY and the output is too long.
+  'header'=>1,                      # Print headers.
+  'paging_less_options'=>'-rXFE',   # Extra options for the pager, if the pager is "less."
+  'editor'=>'emacs -nw',            # editor
+  'now'=>'',                        # pretend it's some other day today
+  'filter_accents_on_output'=>!($ENV{TERM}=~m/(mlterm|xterm)/),
+                                    # since most Unix terminals show accented Unicode chars as garbage
+  'styled_output'=>1,               # Do they want ANSI styling if the output is a TTY?
+  'styled_output_if_not_tty'=>0,    # Do they want ANSI styling if the output isn't a TTY?
+  'calendar_today_style'=>'bold',   # ANSI styling for today's date on the calendar.
+  'items_today_style'=>'bold',      # ANSI styling for today's items on the calendar.
+  'prefilter'=>'',                  # pipe calendar file through this program before feeding it to When
+  'monday_first'=>0,                # display Monday rather than Sunday as the first day of the week?
+  'orthodox_easter'=>0,             # use Orthodox Eastern Church's date for easter?
+  'neighboring_months'=>1,          # print 3 months when doing a "when c"?
+  'ampm'=>1,                        # use 12-hour time?
+  'auto_pm'=>0,                     # if nonzero, then times with hours less than this are assumed to be PM
+  'literal_only'=>0,                # only display items given as literal dates?
+  'text_expression'=>''             # used by 'make test'
+);
+
+our %options=(
+  'help'=>0,                        # print documentation
+  'version'=>0,                     # print version number, and other info
+  'bare_version'=>0,                # print version number
+  'make_filter_regex'=>0,           # to make unicode filtering efficient
+  'test_accent_filtering'=>0,       # to make sure it really catches all the accented characters that are present in the translations
+);
+
+# The following is for use by Getopt::Long. ! means negatable. =s means it requires a string value, =i an integer.
+our %command_line_options = (
+  'help'=>\$options{'help'},
+  'version'=>\$options{'version'},
+  'bare_version'=>\$options{'bare_version'},
+  'make_filter_regex'=>\$options{'make_filter_regex'},
+  'test_accent_filtering'=>\$options{'test_accent_filtering'},
+  'language=s'=>\$preferences{'language'},
+  'past=i'=>\$preferences{'past'},
+  'future=i'=>\$preferences{'future'},
+  'calendar=s'=>\$preferences{'calendar'},
+  'wrap=i'=>\$preferences{'wrap'},
+  'wrap_auto!'=>\$preferences{'wrap_auto'},
+  'wrap_max=i'=>\$preferences{'wrap_max'},
+  'rows_auto!'=>\$preferences{'rows_auto'},
+  'paging!'=>\$preferences{'paging'},
+  'header!'=>\$preferences{'header'},
+  'paging_less_options=s'=>\$preferences{'paging_less_options'},
+  'editor=s'=>\$preferences{'editor'},
+  'now=s'=>\$preferences{'now'},
+  'calendar_today_style=s'=>\$preferences{'calendar_today_style'},
+  'items_today_style=s'=>\$preferences{'items_today_style'},
+  'prefilter=s'=>\$preferences{'prefilter'},
+  'filter_accents_on_output!'=>\$preferences{'filter_accents_on_output'},
+  'styled_output!'=>\$preferences{'styled_output'},
+  'styled_output_if_not_tty!'=>\$preferences{'styled_output_if_not_tty'},
+  'monday_first!'=>\$preferences{'monday_first'},
+  'orthodox_easter!'=>\$preferences{'orthodox_easter'},
+  'neighboring_months!'=>\$preferences{'neighboring_months'},
+  'ampm!'=>\$preferences{'ampm'},
+  'auto_pm=i'=>\$preferences{'auto_pm'},
+  'literal_only!'=>\$preferences{'literal_only'},
+  'test_expression=s'=>\$preferences{'test_expression'},
+);
+
+#----------------------------------------------------------------
+# Strings are all collected here for ease of internationalization:
+#----------------------------------------------------------------
+
+# When adding characters to the following list, make sure to add them to
+# UnicodeTools::filter(), then run "./when --make_filter_regex" and cut and paste the output into UnicodeTools::filter_out_accents().
+our $e_acute = "\x{e9}";
+our $u_circumflex = "\x{fb}";
+
+# German characters:
+our $A_uml   = "\x{c4}";
+our $a_uml   = "\x{e4}";
+our $O_uml   = "\x{d6}";
+our $o_uml   = "\x{f6}";
+our $U_uml   = "\x{dc}";
+our $u_uml   = "\x{fc}";
+our $s_zlig  = "\x{df}";
+
+# Polish characters:
+our $a_polish = "\x{105}";
+our $c_polish = "\x{107}";
+our $e_polish = "\x{119}";
+our $l_polish = "\x{142}";
+our $n_polish = "\x{144}";
+our $o_polish = "\x{0f3}";
+our $s_polish = "\x{15b}";
+our $z_polish = "\x{17a}";
+our $zz_polish = "\x{17c}";
+
+# Czech characters:
+our $a_acute = "\x{e1}";
+our $i_acute = "\x{ed}";
+our $u_acute = "\x{fa}";
+our $y_acute = "\x{fd}";
+our $U_acute = "\x{da}";
+our $C_wedge = "\x{10c}";
+our $c_wedge = "\x{10d}";
+our $e_wedge = "\x{11b}";
+our $R_wedge = "\x{158}";
+our $r_wedge = "\x{159}";
+
+# Danish characters:
+our $a_ring  = "\x{e5}";
+our $A_ring  = "\x{c5}";
+our $o_slash = "\x{f8}";
+our $O_slash = "\x{d8}";
+our $ae      = "\x{e6}";
+our $AE      = "\x{c6}";
+
+# Swedish characters:
+our $a_ring  = "\x{e5}";
+our $A_ring  = "\x{c5}";
+our $a_uml   = "\x{e4}";
+our $A_uml   = "\x{c4}";
+our $o_uml   = "\x{f6}";
+our $O_uml   = "\x{d6}";
+
+# Spanish characters:
+our $A_acute = "\x{c1}";
+our $E_acute = "\x{c9}";
+our $I_acute = "\x{cd}";
+our $O_acute = "\x{d3}";
+our $U_acute = "\x{da}";
+our $a_acute = "\x{e1}";
+our $e_acute = "\x{e9}";
+our $i_acute = "\x{ed}";
+our $o_acute = "\x{f3}";
+our $u_acute = "\x{fa}";
+our $n_tilde = "\x{f1}";
+
+# French characters:
+our $a_grave = "\x{e0}";
+
+# Romanian diacritics
+our $A_breve = "\x{102}";
+our $A_circumflex = "\x{c2}" ;
+our $I_circumflex = "\x{ce}" ;
+our $S_commabelow = "\x{218}" ;
+our $T_commabelow = "\x{21a}" ;
+our $a_breve = "\x{103}";
+our $a_circumflex = "\x{e2}" ;
+our $i_circumflex = "\x{ee}" ;
+our $s_commabelow = "\x{219}" ;
+our $t_commabelow = "\x{21b}" ;
+# Some time S and T with comma below are not present in the font.
+# Some people are using the cedilla gliphs instead. They are wrong
+# (the gliphs).
+our $quot_open = "\x{201e}" ;
+our $quot_close = "\x{201c}" ;
+our $quotalt_open = "\x{ab}" ;
+our $quotalt_close = "\x{bb}" ;
+our $nonbreaking_hyphen = "\x{2011}" ;
+
+
+#**********************************************************************
+# When adding a language, make sure to update the list of languages
+# in the man page as well!
+#**********************************************************************
+
+our %month_name =
+  (
+   'en'=>'Jan Feb Mar Apr May Jun Jul Aug Sep Oct Nov Dec', # English
+   'pl'=>"Sty Lut Mar Kwi Maj Cze Lip Sie Wrz Pa${z_polish} Lis Gru", # Polish
+   'fr'=>"Jan F${e_acute}v Mar Avr Mai Juin Juil Ao${u_circumflex} Sep Oct Nov D${e_acute}c", # French
+   'it'=>"Gen Feb Mar Apr Mag Giu Lug Ago Set Ott Nov Dic", # Italian (by Mario)
+   'de'=>'Jan Feb Mar Apr Mai Jun Jul Aug Sep Okt Nov Dez', # German
+   'hu'=>"jan febr m${a_acute}rc ${a_acute}pr m${a_acute}j j${u_acute}n j${u_acute}l aug szept okt nov dec", # Hungarian
+   'nl'=>'Jan Feb Mar Apr Mei Jun Jul Aug Sep Okt Nov Dec', # Dutch
+   'cs'=>"Led ${U_acute}no B${r_wedge}e Dub Kv${e_wedge} ${C_wedge}er ${C_wedge}ec Srp Z${a_acute}${r_wedge} ${R_wedge}${i_acute}j Lis Pro", # Czech (cer/cec seem to be fairly widely used abbreviations for cerven/cervenec)
+   'da'=>'jan feb mar apr maj jun jul aug sep okt nov dec', # Danish
+   'sv'=>'jan feb mar apr maj jun jul aug sep okt nov dec', # Swedish
+   'es'=>'ene feb mar abr may jun jul ago sep oct nov dic', # Spanish
+   'el'=>'Ιαν Φεβ Μαρ Απρ Μάι Ιούν Ιούλ Αύγ Σεπ Οκτ Νοέ Δεκ', # Greek
+   'ro'=>'ian feb mar apr mai iun iul aug sep oct noi dec', # Romanian
+  );
+our %month_name_long =
+  (
+    # English:
+    'en'=>'January February March April May June July August September October November December',
+    # Polish:
+    'pl'=>"Stycze${n_polish} Luty Marzec Kwiecie${n_polish} Maj Czerwiec Lipiec Sierpie${n_polish} Wrzesie${n_polish} Pa${z_polish}dziernik Listopad Grudzie${n_polish}",
+    # French:
+    'fr'=>"Janvier F${e_acute}vrier Mars Avril Mai Jiun Juillet Ao${u_circumflex}t Septembre Octobre Novembre D${e_acute}cembre",
+    # Italian:
+    'it'=>'Gennaio Febbraio Marzo Aprile Maggio Giugno Luglio Agosto Settembre Ottobre Novembre Dicembre', 
+    # German:
+    'de'=>"Januar Februar M${a_uml}rz April Mai Juni Juli August September Oktober November Dezember",
+    # Hungarian:
+    'hu'=>"janu${a_acute}r febru${a_acute}r m${a_acute}rcius ${a_acute}prilis m${a_acute}jus j${u_acute}nius j${u_acute}lius augusztus szeptember okt${o_acute}ber november december",
+    # Dutch:
+    'nl'=>'Januari Februari Maart April Mei Juni Juli Augustus September Oktober November December',
+    # Czech:
+    'cs'=>"Leden ${U_acute}nor B${r_wedge}ezen Duben Kv${e_wedge}ten ${C_wedge}erven ${C_wedge}ervenec Srpen Z${a_acute}${r_wedge}${i_acute} ${R_wedge}${i_acute}jen Listopad Prosinec", # Czech (needs to be long, because Cerven=Cervenec for 1st 6 characters)
+    # Danish (not capitalized)
+    'da'=>"januar februar marts april maj juni juli august september oktober november december",
+    # Swedish (not capitalized)
+    'sv'=>"januari februari mars april maj juni juli augusti september oktober november december",
+		# Spanish
+    'es'=>"Enero Febrero Marzo Abril Mayo Junio Julio Agosto Septiembre Octubre Noviembre Diciembre",
+    # Greek
+    'el'=>'Ιανουάριος Φεβρουάριος Μάρτιος Απρίλιος Μάιος Ιούνιος Ιούλιος Αύγουστος Σεπτέμβριος Οκτώβριος Νοέμβριος Δεκέμβριος',
+    # Romanian
+    'ro'=>'ianuarie februarie martie aprilie mai iunie iulie august septembrie octombrie noiembrie decembrie',
+  );
+our %wday_name = 
+  (
+    'en'=>'Sun Mon Tue Wed Thu Fri Sat', # English
+    'pl'=>'Nie Pon Wto Sro Czw Pia Sob', # Polish
+    'fr'=>'Dim Lun Mar Mer Jeu Ven Sam', # French
+    'it'=>'Dom Lun Mar Mer Gio Ven Sab', # Italian
+    'de'=>'So Mo Di Mi Do Fr Sa',        # German
+    'hu'=>"Vas H${e_acute}t Ked Sze Cs${u_uml} P${e_acute}n Szo", # Hungarian
+    'nl'=>'Zondag Maandag Dinsdag Woensdag Donderdag Vrijdag Zaterdag', # Dutch (capitalized)
+    'cs'=>"Ned${e_wedge}le Pond${e_wedge}l${i_acute} ${U_acute}ter${y_acute} Streda ${C_wedge}tvrtek P${a_acute}tek Sobota", # Czech 
+    'da'=>"s${o_slash}ndag mandag tirsdag onsdag torsdag fredag l${o_slash}rdag", # Danish (not capitalized)
+    'sv'=>"s${o_uml}ndag m${a_ring}ndag tisdag onsdag torsdag fredag l${o_uml}rdag", # Swedish (not capitalized)
+    'es'=>"Dom Lun Mar Mie Jue Vie Sab", # Spanish
+    'el'=>'Κυρ Δευ Τρί Τετ Πέμ Παρ Σάβ', # Greek
+    'ro'=>'du lu ma mi jo vi sb', # Romanian
+  );
+
+#------------------------------------------------------------------------
+# This subroutine is used every time we need to print out some text in the
+# user's chosen language.
+#------------------------------------------------------------------------
+sub w {
+  my $what = shift;
+  my @stuff = @_;
+  my $lingo = $preferences{'language'};
+  my %strings;
+  if ($lingo eq 'it' ) { # Italian (thanks to Mario)
+    %strings = 
+      (
+        'error_opening_prefs'=>"Il file delle preferenze %s esiste, ma ci sono problemi durante la lettura.",
+        'syntax_err_in_prefs'=>"Errore di sintassi nelle preferenze %s:\n%s",
+        'prefs_file_not_found'=>"File delle preferenze %s non trovato.\n",
+        'illegal_command'=>"Comando illegale, %s\n",
+        'error_opening_calendar'=>"Non posso aprire il file %s per la lettura\n",
+        'yesterday'=>'ieri',
+        'today'=>'oggi',
+        'tomorrow'=>'domani',
+        'syntax_error_in_calendar'=>"Errore di sintassi nel calendario: %s\n",
+        'illegal_year'=>"Anno illegale: %s\n",
+        'illegal_month'=>"Mese illegale: %s\n",
+        'illegal_day_of_month'=>"Giorno del mese illegale: %s\n",
+        'first_time_not_tty'=>"Per impostare il tuo calendario, richiama il comando ``when'' in un terminale interattivo.\n",
+        'ask_if_set_up'=>("Adesso puoi impostare il tuo calendario. Questo avviene creando una directory ~/.when e creando\n".
+                          "un paio di file al suo interno. Se si desidera procedere, digitare y e premere invio.\n"),
+        'error_creating_dir'=>"Errore durante la creazione della directory %s\n",
+        'ask_for_editor'=>("Puoi modificare il tuo calendario usando il tuo editor preferito. Per favore, inserire il comando\n"
+                           ."che si vuole usare per lanciare il tuo editor, o premere invio per accettare quello predefinito:\n"),
+        'error_creating_prefs'=>"Errore durante la creazione del file %s\n",
+        'error_creating_cal'=>"Errore durante la creazione del file %s\n",
+        'getting_started'=>("Adesso puoi aggiungere degli elementi al tuo calendario. Usare ``when --help'' per maggiori informazioni.\n"),
+      )
+    } elsif ($lingo eq 'pl' ) { # Polish (thanks to Marcin Omen)
+        %strings = 
+      (
+        'date_syntax_error'=>"Podana data %s jest w niew${l_polish}a${s_polish}ciwym formacie. Podaj dat${e_polish} w formacie 'y m d', ze spacjami oddzielaj${a_polish}cymi poszczeg${o_polish}lne cz${e_polish}${s_polish}ci.",
+        'error_opening_prefs'=>"Plik konfiguracyjny %s istnieje, jednak wyst${a_polish}pi${l_polish} b${l_polish}${a_polish}d podczas jego otwierania.",
+        'syntax_err_in_prefs'=>"B${l_polish}${a_polish}d sk${l_polish}adni w pliku konfiguracyjnym %s:\n%s",
+        'prefs_file_not_found'=>"Plik konfiguracyjny %s nie zosta${l_polish} odnaleziony.\n",
+        'illegal_command'=>"Niew${l_polish}a${s_polish}ciwa komenda %s\n",
+        'error_opening_calendar'=>"B${l_polish}${a_polish}d przy otwieraniu pliku %s \n",
+        'yesterday'=>'wczoraj',
+        'today'=>("dzi${s_polish}"),
+        'tomorrow'=>'jutro',
+        'syntax_error_in_calendar'=>"B${l_polish}${a_polish}d sk${l_polish}adni w pliku kalendarza: %s\n",
+        'illegal_year'=>"Niew${l_polish}a${s_polish}ciwy rok: %s\n",
+        'illegal_month'=>"Niew${l_polish}a${s_polish}ciwy miesi${a_polish}c: %s\n",
+        'illegal_day_of_month'=>"Niew${l_polish}a${s_polish}ciwy dzie${n_polish}: %s\n",
+        'first_time_not_tty'=>"Aby zainicjowac kalendarz u${zz_polish}yj komendy ``when'' w oknie terminala.\n",
+        'ask_if_set_up'=>("Za chwil${e_polish} rozpocznie sie konfiguracja kalendarza. Stworzony zostanie katalog ~/.when w\n kt${o_polish}rym pojawi${a_polish} sie pliki konfiguracyjne. Je${s_polish}li zgadzasz si${e_polish} na t${a_polish} operacj${e_polish} wci${s_polish}nij\n klawisz 'y' i potwierd${z_polish} klawiszem Enter.\n"),
+        'error_creating_dir'=>"B${l_polish}${a_polish}d w tworzeniu katalogu %s\n",
+        'ask_for_editor'=>("Mo${zz_polish}esz edytowa${c_polish} sw${o_polish}j plik kalendarza u${zz_polish}ywaj${a_polish}c ulubionego edytora. Podaj komend${e_polish} do uruchamienia\n".
+                	"edytora lub wci${s_polish}nij Enter aby u${zz_polish}ywa${c_polish} standardowego edytora:\n"),
+        'error_creating_prefs'=>"B${l_polish}${a_polish}d w tworzeniu pliku %s\n",
+        'error_creating_cal'=>"B${l_polish}${a_polish}d w tworzeniu pliku %s\n",
+        'getting_started'=>("Mo${zz_polish}esz teraz dodawa${c_polish} nowe pozycje do kalendarza. Sprawd${z_polish} ``when --help'' by otrzymać więcej informacji.\n"),
+        'not_unique_w_match'=>'%s nie jest zgodny z unikalnym dniem tygodnia z %s',
+        'no_w_match'=>'%s nie jest zgodny z dniem tygodnia z %s',
+        'not_valid_expression'=>("%s nie jest prawid${l_polish}ow${a_polish} dat${a_polish} lub wyra${zz_polish}eniem"),
+        'illegal_var'=>("niew${l_polish}a${s_polish}ciwa zmienna: %s"),
+        'illegal_month_in_expression'=>("b${l_polish}${e_polish}dny miesi${a_polish}c w wyra${zz_polish}eniu: %s"),
+        'expression_syntax_error'=>("bl${a_polish}d sk${l_polish}adni: %s"),
+      )
+    } elsif ($lingo eq 'nl' ) { # Dutch (thanks to Stijn Segers)
+        %strings = 
+      (
+        'date_syntax_error'=>"De opmaak van de datum %s klopt niet. Gebruik 'y m d', met spaties tussen de drie delen.",
+        'error_opening_prefs'=>"Het voorkeurbestand %s bestaat, maar is niet toegankelijk.", 
+        'syntax_err_in_prefs'=>"Syntaxfout in voorkeurbestand %s:\n%s",
+        'prefs_file_not_found'=>"Voorkeurbestand %s niet gevonden.\n",
+        'illegal_command'=>"Verkeerde opdracht %s\n",
+        'error_opening_calendar'=>"Kon het bestand %s niet openen voor invoer\n",
+        'yesterday'=>'Gisteren',
+        'today'=>'Vandaag',
+        'tomorrow'=>'Morgen',
+        'syntax_error_in_calendar'=>"Syntaxfout in kalender: %s\n",
+        'illegal_year'=>"Ongeldig jaar: %s\n",
+        'illegal_month'=>"Ongeldige maand: %s\n",
+        'illegal_day_of_month'=>"Ongeldige dag van de maand: %s\n",
+        'first_time_not_tty'=>"Voer de opdracht ``when'' uit in de commandoregel om uw kalender in te stellen.\n",
+        'ask_if_set_up'=>("U kan nu uw kalender instellen. U dient de map ~/.when aan te maken samen met\n".
+                          "een paar bestanden erin. Als U dit graag wil doen, toets y in en druk op Enter.\n"),
+        'error_creating_dir'=>"Kon de map %s niet aanmaken\n",
+        'ask_for_editor'=>("U kan uw kalendar met uw favoriete editor bewerken. Geef de opdracht in om uw voorkeurseditor\n"
+                           ."in te stellen, of druk op Enter op om de standaardeditor te accepteren:\n"),
+        'error_creating_prefs'=>"Kon het voorkeurbestand %s niet aanmaken\n",
+        'error_creating_cal'=>"Kon het kalenderbestand %s niet aanmaken\n",
+        'getting_started'=>("Nu kan u activiteiten aan uw kalender toevoegen. Voer ``when --help'' uit voor meer informatie.\n"),
+        'not_unique_w_match'=>'%s valt op geen enkele weekdag van %s',
+        'not_valid_expression'=>'%s is een ongeldige datum of expressie',
+        'illegal_var'=>'Ongeldige variabele: %s',
+        'illegal_month_in_expression'=>'Ongeldige maand in expressie: %s',
+        'expression_syntax_error'=>'Syntaxfout: %s',
+      )
+    } elsif ($lingo eq 'de' ) { # German (thanks to Chis Mager)
+        %strings = 
+      (
+        'date_syntax_error'=>("Das Datum %s ist nicht im ben${o_uml}tigten Format ('y m d'), die drei Teile sind durch Leerzeichen getrennt."),
+        'error_opening_prefs'=>("Die Preferences-Datei %s existiert zwar, aber es trat ein Fehler beim ${O_uml}ffnen auf."),
+        'syntax_err_in_prefs'=>("Syntaxfehler in der Preferences-Datei %s:\n%s"),
+        'prefs_file_not_found'=>("Preferences-Datei %s nicht gefunden.\n"),
+        'illegal_command'=>("Ung${u_uml}ltige Anweisung: %s\n"),
+        'error_opening_calendar'=>("Konnte die Datei %s nicht ${o_uml}ffnen.\n"),
+        'yesterday'=>'Gestern',
+        'today'=>'Heute',
+        'tomorrow'=>'Morgen',
+        'syntax_error_in_calendar'=>("Syntaxfehler in Kalender: %s\n"),
+        'illegal_year'=>("Unzul${a_uml}ssiges Jahr: %s\n"),
+        'illegal_month'=>("Unzul${a_uml}ssiger Monat: %s\n"),
+        'illegal_day_of_month'=>("Unzul${a_uml}ssiger Tag des Monats: %s\n"),
+        'first_time_not_tty'=>("Um Ihren Kalernder aufzubauen, f${u_uml}hren Sie den Befehl ``when'' in einem interaktiven Terminalfenster aus.\n"),
+        'ask_if_set_up'=>("Sie k${o_uml}nnen jetzt Ihren Kalender aufbauen. Dies hat zur Folge, dass ein Verzeichnis ~/.when angelegt wird, und in ihm\n".
+                          "ein paar Dateien. Wenn Sie das machen wollen, dr${u_uml}cken Sie y, gefolgt von ENTER.\n"),
+        'error_creating_dir'=>("Fehler beim Anlegen des Verzeichnisses %s\n"),
+        'ask_for_editor'=>("Sie k${o_uml}nnen den Kalender mit Ihren Lieblings-Editor bearbeiten. Bitte geben Sie dazu den Befehl zum Starten des Editors ein\n"
+                           ."oder dr${u_uml}cken Sie ENTER, um den Standardwert zu akzeptieren:\n"),
+        'error_creating_prefs'=>("Fehler beim Anlegen der Kalender Datei %s\n"),
+        'error_creating_cal'=>("Fehler beim Anlegen der Preferences-Datei %s\n"),
+        'getting_started'=>("Sie k${o_uml}nnen Ihrem Kalender jetzt Termine hinzuf${u_uml}gen. F${u_uml}hren Sie ``when --help'' f${u_uml}r weitere Informationen aus.\n"),
+        'not_unique_w_match'=>("Es konnte kein eindeutiger Tag f${u_uml}r %s bestimmt werden. M${o_uml}gliche Tage: %s"),
+        'no_w_match'=>("%s stimmt mit keinem der Folgenden Tage ${u_uml}berein: %s"),
+        'not_valid_expression'=>("%s ist kein g${u_uml}ltiges Datum oder Ausdruck."),
+        'illegal_var'=>("Ung${u_uml}ltige Variable: %s"),
+        'illegal_month_in_expression'=>("Ung${u_uml}ltiger Monat im Ausdruck: %s"),
+        'expression_syntax_error'=>("Syntaxfehler: %s"),
+      )
+    } elsif ($lingo eq 'cs' ) { # Czech
+         %strings = 
+      (
+        'date_syntax_error'=>"Datum %s neni v pozadovanem formatu, ktery je 'r m d', s castmi oddelenymi mezerami.",
+        'error_opening_prefs'=>"Soubor nastaveni %s existuje, ale nelze otevrit pro zapis.",
+        'syntax_err_in_prefs'=>"Chyba syntaxe v souboru nastaveni %s:\n%s",
+        'prefs_file_not_found'=>"Soubor nastaveni %s nenalezen.\n",
+        'illegal_command'=>"Neplatny prikaz, %s\n",
+        'error_opening_calendar'=>"Nelze otevrit soubor %s pro zapis.\n",
+        'yesterday'=>'vcera',
+        'today'=>'dnes',
+        'tomorrow'=>'zitra',
+        'syntax_error_in_calendar'=>"Chyba syntaxe v kalendari: %s\n",
+        'illegal_year'=>"Neplatny rok: %s\n",
+        'illegal_month'=>"Neplatny mesic: %s\n",
+        'illegal_day_of_month'=>"Neplatny den v mesici: %s\n",
+        'first_time_not_tty'=>"Pro nastaveni vaseho kalendare, spustte prikaz ``when'' v okne terminalu.\n",
+        'ask_if_set_up'=>("Nyni muzete nastavit vas kalendar. To vytvori adresar ~/.when, a\n".
+                          "a v nem nekolik souboru. Pro souhlas stisknete y a potvrdte klavesou return.\n"),
+        'error_creating_dir'=>"Chyba pri vytvareni adresare %s\n",
+        'ask_for_editor'=>("Kalendar muzete editovat pouzitim vaseho oblibeneho editoru. Prosim zadejte prikaz\n"
+                           ."kterym chcete spoustet editor, nebo stisknete return pro pouziti vychoziho:\n"),
+        'error_creating_prefs'=>"Chyba pri vytvareni souboru %s\n",
+        'error_creating_cal'=>"Chyba pri vytvareni souboru %s\n",
+        'getting_started'=>("Nyni muzete pridat zaznam do vaseho kalendare. Pro vice informaci zadejte ``when --help''.\n"),
+        'not_unique_w_match'=>'%s neodpovida jedinecnemu dni v tydnu z %s',
+        'no_w_match'=>'%s neodpovida zadnemu dni v tydnu od %s', 
+        'not_valid_expression'=>'%s neni platny datum nebo vyraz',
+        'illegal_var'=>'neplatna promena: %s',
+        'illegal_month_in_expression'=>'neplatny mesic ve vyraze: %s',
+        'expression_syntax_error'=>'vnorene zavorky nebo jina chyba syntaxe: %s',
+      )
+    } elsif ($lingo eq 'da' ) { # Danish
+         %strings = 
+      (
+        'date_syntax_error'=>"Datoen %s er ikke i det p${a_ring}kr${ae}vede format, som er '${a_ring} m d', med de tre dele adskilt af mellemrum.",
+        'error_opening_prefs'=>"Pr${ae}ferencefilen %s eksisterer, men kunne ikke ${a_ring}bnes.",
+        'syntax_err_in_prefs'=>"Syntaksfejl i pr${ae}ferencefilen %s:\n%s",
+        'prefs_file_not_found'=>"Pr${ae}ferencefilen %s ikke fundet.\n",
+        'illegal_command'=>"Ugyldig kommando, %s\n",
+        'error_opening_calendar'=>"Kunne ikke ${a_ring}bne filen %s\n",
+        'yesterday'=>"i g${a_ring}r",
+        'today'=>'i dag',
+        'tomorrow'=>'i morgen',
+        'syntax_error_in_calendar'=>"Syntaksfejl i kalender: %s\n",
+        'illegal_year'=>"Ugyldigt ${a_ring}r: %s\n",
+        'illegal_month'=>"Ugyldig m${a_ring}ned: %s\n",
+        'illegal_day_of_month'=>"Ugyldig dag i m${a_ring}neden: %s\n",
+        'first_time_not_tty'=>"For at oprette en kalender, k${o_slash}r kommandoen ``when'' i et interaktivt terminalvindue.\n",
+        'ask_if_set_up'=>("Der kan nu oprettes en kalender. Derved oprettes en mappe ~/.when, med et par filer i sig.\n".
+                          "For at g${o_slash}re dette, tast y efterfulgt af return.\n"),
+        'error_creating_dir'=>"Fejl under oprettelsen af mappen %s\n",
+        'ask_for_editor'=>("Kalenderen kan nu redigeres med valgfri editor. Indtast den kommando, der ${o_slash}nskes brugt\n"
+                           ."til at redigere kalenderen, eller tast return for at bruge f${o_slash}lgende kommando:\n"),
+        'error_creating_prefs'=>"Fejl under oprettelsen af filen %s\n",
+        'error_creating_cal'=>"Fejl under oprettelsen af filen %s\n",
+        'getting_started'=>("Der kan nu tilf${o_slash}jes beskeder til kalenderfilen. K${o_slash}r ``when --help'' for mere information.\n"),
+        'not_unique_w_match'=>'%s er ikke en entydig ugedag. Mulige ugedage er: %s',
+        'no_w_match'=>"%s kan ikke genkendes som en af de f${o_slash}lgende ugedage: %s",
+        'not_valid_expression'=>'%s er ikke en gyldig dato eller udtryk',
+        'illegal_var'=>'ugyldig variabel: %s',
+        'illegal_month_in_expression'=>"ugyldig m${a_ring}ned i udtrykket: %s",
+        'expression_syntax_error'=>'syntaksfejl: %s',
+      )
+    } elsif ($lingo eq 'sv' ) { # Swedish (thanks to Daniel)
+         %strings = 
+      (
+        'date_syntax_error'=>"Datumet %s har ej korrekt format, vilket ${a_uml}r '${a_ring} m d', ${a_ring}tskiljt av mellanrum.",
+        'error_opening_prefs'=>"Inst${a_uml}llningsfilen %s existerar, men kunde ej l${a_uml}sas ifr${a_ring}n.",
+        'syntax_err_in_prefs'=>"Syntaxfel i inst${a_uml}llningsfilen %s:\n%s",
+        'prefs_file_not_found'=>"Inst${a_uml}llningsfilen %s finns ej.\n",
+        'illegal_command'=>"Ogiltigt kommando, %s\n",
+        'error_opening_calendar'=>"Kunde ej ${o_uml}ppna filen %s",
+        'yesterday'=>"ig${a_ring}r",
+        'today'=>'idag',
+        'tomorrow'=>'imorgon',
+        'syntax_error_in_calendar'=>"Syntaxfel i kalender: %s\n",
+        'illegal_year'=>"Ogiltigt ${a_ring}r: %s\n",
+        'illegal_month'=>"Ogiltig m${a_ring}nad: %s\n",
+        'illegal_day_of_month'=>"Ogiltig dag i m${a_ring}naden: %s\n",
+        'first_time_not_tty'=>"F${o_uml}r att uppr${a_uml}tta din kalender, k${o_uml} kommandot ``when'' i ett interaktivt terminalf${o_uml}nster.\n",
+        'ask_if_set_up'=>("Din kalendar kan nu uppr${a_uml}ttas. Katalogen ~/.when och ett par filer kommer att skapas.\n".
+                          "F${o_uml} att g${o_uml}ra detta, skriv y och tryck Return.\n"),
+        'error_creating_dir'=>"Katalogen %s kunde ej skapas\n",
+        'ask_for_editor'=>("Du kan nu redigera din kalender med valfri editor. Mata in det kommando som du vill anv${a_uml}nda f${o_uml} redigering\n"
+                           ."eller tryck Return f${o_uml}r att godk${a_uml}nna detta f${o_uml}rval:\n"),
+        'error_creating_prefs'=>"Filen %s kunde ej skapas\n",
+        'error_creating_cal'=>"Filen %s kunde en skapas\n",
+        'getting_started'=>("Du kan nu l${a_uml}gga till poster i din kalenderfil. K${o_slash}r ``when --help'' f${o_uml} mer information.\n"),
+        'not_unique_w_match'=>'%s matchar inte en unik veckodag. M${o_uml}jliga dagar: %s',
+        'no_w_match'=>"%s matchar inte en av f${o_uml}ljande veckodagar: %s",
+        'not_valid_expression'=>'%s ${a_uml}r inte ett korrekt datum eller uttryck',
+        'illegal_var'=>'ogiltig variabel: %s',
+        'illegal_month_in_expression'=>"ogiltig m${a_ring}nad i uttrycket: %s",
+        'expression_syntax_error'=>'syntaxfel: %s',
+      )
+		} elsif ($lingo eq 'es' ) { # Spanish
+         %strings =
+      (
+        'date_syntax_error'=>"Formato incorrecto en la fecha %s, debe ser 'a m d', con espacios separando las tres partes.",
+        'error_opening_prefs'=>"Error abriendo para escritura el fichero de preferencias %s.",
+        'syntax_err_in_prefs'=>"Error de sintaxis en el archivo de preferencias %s:\n%s",
+        'prefs_file_not_found'=>"Archivo de preferencias %s no encontrado.\n",
+        'illegal_command'=>"Comando ilegal: %s\n",
+        'error_opening_calendar'=>"No se pudo abrir el archivo %s.\n",
+        'yesterday'=>"Ayer",
+        'today'=>"Hoy",
+        'tomorrow'=>"Ma${n_tilde}ana",
+        'syntax_error_in_calendar'=>"Error de sintaxis en el calendario: %s\n",
+        'illegal_year'=>"Valor ilegal para el campo a${n_tilde}o: %s\n",
+        'illegal_month'=>"Valor ilegal para el campo mes: %s\n",
+        'illegal_day_of_month'=>"Valor ilegal para el d${i_acute}a del mes: %s\n",
+        'first_time_not_tty'=>"Para configurar tu calendario, ejecuta el comando ``when'' en una ventana de terminal interactivo.\n",
+        'ask_if_set_up'=>("Puedes configurar ahora tu calendario. Esto implica crear el directorio ~/.when y un par de archivos en ${e_acute}l. Si deseas hacer esto, teclea 'y' y presiona enter.\n"),
+        'error_creating_dir'=>"Error creando directorio %s\n",
+        'ask_for_editor'=>("Puedes editar tu calendario usando tu editor favorito. Introduce el comando necesario \npara lanzar tu editor o presiona enter para aceptar el editor por defecto:\n"),
+        'error_creating_prefs'=>"Error creando el archivo %s\n",
+        'error_creating_cal'=>"Error creando el archivo %s\n",
+        'getting_started'=>("Ya puedes a${n_tilde}adir elementos a tu calendario. Ejecuta ``when --help'' para m${a_acute}s informaci${o_acute}n.\n"),
+        'not_unique_w_match'=>"%s no se corresponde con un ${u_acute}nico d${i_acute}a de la semana: %s",
+        'no_w_match'=>"%s no se corresponde con ning${u_acute}n d${i_acute}a de la semana: %s",
+        'not_valid_expression'=>"%s no es una fecha o expresi${o_acute}n v${a_acute}lida",
+        'illegal_var'=>"Variable ilegal: %s",
+        'illegal_month_in_expression'=>"valor ilegal para el campo mes en la expresi${o_acute}n: %s",
+        'expression_syntax_error'=>"Error de sintaxis: %s",
+      )
+    } elsif ($lingo eq 'el' ) { # Greek (thanks to George Vlahavas)
+    %strings = 
+      (
+        'date_syntax_error'=>"Η ημερομηνία %s δεν έχει την κατάλληλη μορφή, η οποία είναι 'έτος μήνας ημέρα', με κενά να χωρίζουν τα τρία μέρη.",
+        'error_opening_prefs'=>"Το αρχείο ρυθμίσεων %s υπάρχει, αλλά υπήρξε κάποιο λάθος κατά την προσπέλαση του.",
+        'syntax_err_in_prefs'=>"Συντακτικό λάθος στο αρχείο ρυθμίσεων %s:\n%s",
+        'prefs_file_not_found'=>"Το αρχείο ρυθμίσεων %s δεν βρέθηκε.\n",
+        'illegal_command'=>"Λάθος εντολή, %s\n",
+        'error_opening_calendar'=>"Δεν ήταν δυνατό να ανοιχτεί το αρχείο %s\n",
+        'yesterday'=>'χθες',
+        'today'=>'σήμερα',
+        'tomorrow'=>'αύριο',
+        'syntax_error_in_calendar'=>"Συντακτικό λάθος στο ημερολόγιο: %s\n",
+        'illegal_year'=>"Λάθος έτος: %s\n",
+        'illegal_month'=>"Λάθος μήνας: %s\n",
+        'illegal_day_of_month'=>"Λάθος ημέρα του μήνα: %s\n",
+        'first_time_not_tty'=>"Για να ρυθμίσετε αρχικά το ημερολόγιο, εκτελέστε την εντολή ``when'' σε ένα παράθυρο τερματικού.\n",
+        'ask_if_set_up'=>("Μπορείτε τώρα να ρυθμίσετε το ημερολόγιο. Αυτό περιλαμβάνει τη δημιουργία του καταλόγου ~/.when, και τη δημιουργία\n".
+                          "μερικών αρχείων εκεί. Αν επιθυμείτε να συνεχίσετε, πληκτρολογήστε y και στη συνέχεια το πλήκτρο enter.\n"),
+        'error_creating_dir'=>"Σφάλμα κατά τη δημιουργία του καταλόγου %s\n",
+        'ask_for_editor'=>("Μπορείτε να επεξεργαστείτε το ημερολόγιο σας χρησιμοποιώντας τον αγαπημένο σας επεξεργαστη κειμένου. Παρακαλώ εισάγετε την εντολή\n"
+                           ."που αντιστοιχεί σ'αυτόν ή πατήστε το πλήκτρο enter για να χρησιμοποιήσετε τον εξ'ορισμού επεξεργαστή κειμένου:\n"),
+        'error_creating_prefs'=>"Σφάλμα κατά τη δημιουργία του αρχείου %s\n",
+        'error_creating_cal'=>"Σφάλμα κατά τη δημιουργία του αρχείου %s\n",
+        'getting_started'=>("Μπορείτε τώρα να εισάγετε δεδομένα στο ημερολόγιο. Εκτελέστε την εντολή ``when --help'' για περισσότερες πληροφορίες.\n"),
+        'not_unique_w_match'=>'Το %s δεν ταιριάζει με καμία μέρα της βδομάδας από το %s',
+        'no_w_match'=>'Σφάλμα κατά τη δημιουργία του αρχείου',
+        'not_valid_expression'=>'Το %s δεν είναι σωστή ημερομηνία ή έκφραση',
+        'illegal_var'=>'λάθος μεταβλητή: %s',
+        'illegal_month_in_expression'=>'λάθος μήνας στην έκφραση: %s',
+        'expression_syntax_error'=>'φωλιασμένες παρενθέσεις ή άλλο συντακτικό λάθος: %s',
+      )
+    } elsif ($lingo eq 'ro' ) { # Romanian (thanks to Ionel Mugurel Ciobîcă)
+         %strings =
+      (
+        'date_syntax_error'=>"Format incorect pentru %s, care este ${quot_open}a l z${quot_close}, cu spa${t_commabelow}ii albe ${i_circumflex}ntre ele.",
+        'error_opening_prefs'=>"Fi${s_commabelow}ierul de preferin${t_commabelow}e %s exist${a_breve}, dar d${a_breve} eroare la deschidere.",
+        'syntax_err_in_prefs'=>"Eroare de sintax${a_breve} ${i_circumflex}n fi${s_commabelow}ierul de preferin${t_commabelow}e %s:\n%s",
+        'prefs_file_not_found'=>"Fi${s_commabelow}ierul de preferin${t_commabelow}e %s inexistent.\n",
+        'illegal_command'=>"Comand${a_breve} ilegal${a_breve}: %s\n",
+        'error_opening_calendar'=>"nu se poate deschide fi${s_commabelow}ierul %s pentru scriere.\n",
+        'not_utf8'=>"Fi${s_commabelow}ierul %s nu pare a fi codat ${i_circumflex}n utf8 (sau ascii, care este un subset de utf8). Utilitarul unix"
+         ."${quot_open}file${quot_close} v${nonbreaking_hyphen}ar putea spune ${i_circumflex}n ce codare este.\n",
+        'yesterday'=>'ieri',
+        'today'=>"ast${a_breve}zi",
+        'tomorrow'=>"m${i_circumflex}ine",
+        'syntax_error_in_calendar'=>"Eroare de sintax${a_breve} ${i_circumflex}n calendar: %s\n",
+        'illegal_year'=>"An ilegal: %s\n",
+        'illegal_month'=>"Lun${a_breve} ilegal${a_breve}: %s\n",
+        'illegal_day_of_month'=>"Ziua lunii nepermis${a_breve}: %s\n",
+        'first_time_not_tty'=>"Pentru a configura calendarul, folosi${t_commabelow}i comanda ${quot_open}when${quot_close} ${i_circumflex}n terminalul intercativ.\n",
+        'ask_if_set_up'=>("Pute${t_commabelow}i s${a_breve} v${a_breve} configura${t_commabelow}i acum calendarul. Aceasta implic${a_breve} crearea directorului ~/.when, ${s_commabelow}i a\n".
+          "unor fi${s_commabelow}iere ${i_circumflex}n el. Dac${a_breve} dori${t_commabelow}i asta, ap${a_breve}sa${t_commabelow}i tasta y ${s_commabelow}i apoi enter.\n"),
+        'error_creating_dir'=>"Eroare la crearea directorului %s\n",
+        'ask_for_editor'=>("Pute${t_commabelow}i edita fi${s_commabelow}ierul calendar cu editorul favorit. V${a_breve} rug${a_breve}m s${a_breve} da${t_commabelow}i comanda pe care\n"
+         ."vre${t_commabelow}i s${a_breve} o folosi${t_commabelow}i s${a_breve} rula${t_commabelow}i editorul dumneavoastr${a_breve}, sau ap${a_breve}sa${t_commabelow}i enter pentru a accepta varianta implicit${a_breve}:\n"),
+        'error_creating_prefs'=>"Eroare la crearea fi${s_commabelow}ierului %s\n",
+        'error_creating_cal'=>"Eroare la crearea fi${s_commabelow}ierului %s\n",
+        'getting_started'=>("Pute${t_commabelow}i ad${a_breve}uga intr${a_breve}ri la fi${s_commabelow}ierul calendar. ${quot_open}when --help${quot_close} v${a_breve} aduce mai multe informa${t_commabelow}ii.\n"),
+        'not_unique_w_match'=>"%s nu corespunde unei zile unice a s${a_breve}pt${a_breve}m${i_circumflex}nii din %s",
+        'no_w_match'=>"%s nu corespunde nici unei zile a s${a_breve}pt${a_breve}m${i_circumflex}nii din %s",
+        'not_valid_expression'=>"%s nu este o dat${a_breve} valid${a_breve} sau expresie",
+        'illegal_var'=>"variabil${a_breve} ilegal${a_breve}: %s",
+        'illegal_month_in_expression'=>"lun${a_breve} ilegal${a_breve} ${i_circumflex}n expresia: %s",
+        'expression_syntax_error'=>"Erori de sintax${a_breve}: %s",
+        'error_running_editor'=>"Eroare la executarea comenzii %s, %s. Poate %s nu este instalat?\nA${t_commabelow}i ales aceast${a_breve}"
+         ."comand${a_breve} ${i_circumflex}n fi${s_commabelow}ierul %s.\n",
+        'describe_julian_day'=>"Data %s corespunde zilei %d a calendarului Iulian modificat.\n",
+      )
+    } elsif ($lingo eq 'fr' ) { # French (thanks to Raphaël Droz)
+        %strings = 
+      (
+        'date_syntax_error'=>"Le format de la date '%s' n'est pas 'a m j', séparés par des espaces.",
+        'error_opening_prefs'=>"Le fichier de préférences %s existe mais son ouverture en lecture à échoué.",
+        'syntax_err_in_prefs'=>"Erreur de syntaxe dans le fichier de préférences %s:\n%s",
+        'prefs_file_not_found'=>"Fichier de préférences %s introuvable.\n",
+        'illegal_command'=>"Commande inconnue : %s\n",
+        'error_opening_calendar'=>"Ne peut ouvrir le fichier %s en lecture\n",
+        'not_utf8'=>"Le fichier %s ne semble pas encodé en utf8 (ou en ascii qui en est un sous-ensemble). L'utilitaire UNIX 'file' peut probablement déterminer quel est l'encodage utilisé.\n",
+        'yesterday'=>'hier',
+        'today'=>"aujourd'hui",
+        'tomorrow'=>'demain',
+        'syntax_error_in_calendar'=>"Erreur de syntaxe dans le calendrier : %s\n",
+        'illegal_year'=>"Année incorrecte : %s\n",
+        'illegal_month'=>"Mois incorrect : %s\n",
+        'illegal_day_of_month'=>"Jour du mois incorrect : %s\n",
+        'first_time_not_tty'=>"Pour installer le calendrier lancez ``when'' dans un terminal interactif.\n",
+        'ask_if_set_up'=>("Vous pouvez maintenant installer votre calendrier. C'est-à-dire créer le répertoire ~/.when, et y créer\n".
+                          "une paire de fichiers. Si c'est ceci que vous souhaitez, tapez 'y' puis 'entrée'.\n"),
+        'error_creating_dir'=>"Erreur lors de la création du répertoire %s\n",
+        'ask_for_editor'=>("Vous pouvez éditer votre calendrier avec votre éditeur de texte favori. Entrez la commande correspondante\n"
+                           ."à utiliser ou bien tapez 'entrée' pour utiliser la valeur par défaut ci-dessous:\n"),
+        'error_creating_prefs'=>"Erreur lors de la création du fichier de préférences %s\n",
+        'error_creating_cal'=>"Erreur lors de la création du fichier de calendrier %s\n",
+        'getting_started'=>("Il vous est désormais possible d'ajouter des éléments au fichier de calendrier. Utilisez ``when --help'' pour plus d'information.\n"),
+        'not_unique_w_match'=>"%s ne correspond pas à un seul et unique jour de la semaine %s",
+        'no_w_match'=>'%s ne correspond à aucun jour de la semaine %s',
+        'not_valid_expression'=>"%s n'est pas une date ou expression valide",
+        'illegal_var'=>'variable illégale : %s',
+        'illegal_month_in_expression'=>"mois illégal dans l'expression : %s",
+        'expression_syntax_error'=>'Erreur de syntaxe : %s',
+        'error_running_editor'=>"Erreur lors de l'exécution de la commande %s, %s. %s n'est peut-être pas installé ?\nCette commande provient du fichier %s.\n",
+        'describe_julian_day'=>"La date %s correspond au jour Julien modifié %d.\n",
+      )
+    } else { # default to English
+         %strings = 
+      (
+        'date_syntax_error'=>"The date %s is not in the required format, which is 'y m d', with blanks separating the three parts.",
+        'error_opening_prefs'=>"The preferences file %s exists, but there was an error opening it for input.",
+        'syntax_err_in_prefs'=>"Syntax error in preferences file %s:\n%s",
+        'prefs_file_not_found'=>"Preferences file %s not found.\n",
+        'illegal_command'=>"Illegal command, %s\n",
+        'error_opening_calendar'=>"Couldn't open the file %s for input\n",
+        'error_prefiltering'=>"Couldn't execute the prefilter %s\n",
+        'not_utf8'=>"The file %s does not appear to be encoded in utf8 (or ascii, which is a subset of utf8). The unix 'file' utility can probably tell you what its encoding is.\n",
+        'yesterday'=>'yesterday',
+        'today'=>'today',
+        'tomorrow'=>'tomorrow',
+        'syntax_error_in_calendar'=>"Syntax error in calendar: %s\n",
+        'illegal_year'=>"Illegal year: %s\n",
+        'illegal_month'=>"Illegal month: %s\n",
+        'illegal_day_of_month'=>"Illegal day of the month: %s\n",
+        'first_time_not_tty'=>"To set up your calendar, do the command ``when'' in an interactive terminal window.\n",
+        'ask_if_set_up'=>("You can now set up your calendar. This involves creating a directory ~/.when, and making\n".
+                          "a couple of files in it. If you want to do this, type y and hit return.\n"),
+        'error_creating_dir'=>"Error creating the directory %s\n",
+        'ask_for_editor'=>("You can edit your calendar file using your favorite editor. Please enter the command you\n"
+                           ."want to use to run your editor, or hit return to accept this default:\n"),
+        'error_creating_prefs'=>"Error creating the file %s\n",
+        'error_creating_cal'=>"Error creating the file %s\n",
+        'getting_started'=>("You can now add items to your calendar file. Do ``when --help'' for more information.\n"),
+        'not_unique_w_match'=>'%s does not match a unique day of the week from %s',
+        'no_w_match'=>'%s does not match any day of the week from %s',
+        'not_valid_expression'=>'%s is not a valid date or expression',
+        'illegal_var'=>'illegal variable: %s',
+        'illegal_month_in_expression'=>'illegal month in expression: %s',
+        'expression_syntax_error'=>'syntax error: %s',
+        'error_running_editor'=>"Error executing command %s, %s. Perhaps %s isn't installed?\nYou selected this command in the file %s.\n",
+        'describe_julian_day'=>"The date %s corresponds to modified julian day %d.\n",
+      )
+    }
+  if ($what eq '__give_all_strings') {return values %strings} # used by UnicodeTools::collect_all_strings()
+  if (exists $strings{$what}) {$what = $strings{$what}}
+  return sprintf($what,@stuff);
+}
+
+
+#----------------------------------------------------------------
+# Some constants for ANSI terminal styling.
+#----------------------------------------------------------------
+our %ansi_terminal_styling = (
+  'bold'=>1, 'underlined'=>4,'flashing'=>5,
+  'fgblack'=>30,'fgred'=>31,'fggreen'=>32,'fgyellow'=>33,'fgblue'=>34,'fgpurple'=>35,'fgcyan'=>36,'fgwhite'=>37,
+  'bgblack'=>40,'bgred'=>41,'bggreen'=>42,'bgyellow'=>43,'bgblue'=>44,'bgpurple'=>45,'bgcyan'=>46,'bgwhite'=>47,
+);
+
+
+#----------------------------------------------------------------
+# Read the preferences file.
+#----------------------------------------------------------------
+my $dir = glob "~/.when";
+my $prefs_file = glob '~/.when/preferences';
+our $quickie = 0;
+our $got_command_line_options = 0;
+
+our $explicitly_set_future = 0;
+     # ...This is set in two places, and used in one place -- see there for an explanation of what it's for.
+
+if (! -e $prefs_file) {
+  # Normally we read command-line options after reading the prefs file, to
+  # allow them to override the file. However, if the prefs file doesn't exist,
+  # we want to do that now, and find out if this is a run where all we need to
+  # do is a --version or something. The reason for this complication is that we
+  # need to handle the case where the root user (who doesn't want to set up his
+  # own calendar file) is installing when, and when is being run from inside the
+  # makefile in order to find out what version it is.
+  my $old_future = $preferences{'future'};
+  GetOptions(%command_line_options); # from Getops::Long
+  my $new_future = $preferences{'future'};
+  $explicitly_set_future ||= ($old_future != $new_future);
+  $got_command_line_options = 1;
+  $quickie =
+    ($options{'version'} || $options{'bare_version'} || $options{'make_filter_regex'} || $options{'test_accent_filtering'} || $options{'help'} || $options{'test_expressions'});
+}
+
+# Note that $ENV{LANG} won't exist on non-Linux systems (e.g., doesn't exist on BSD). Debian
+# systems have it set to, e.g., "en_US", but apparently Red Hat does something like "en_US.utf8".
+if (exists $ENV{LANG}) {
+  if ($ENV{LANG} =~ m/^(..)/) {
+    my $l = lc($1);
+    $preferences{'language'} = $l;
+  }
+}
+# Later on, we check whether the language has been set in the preferences
+# file or in a command line option. If the end result is that the language
+# is set to something goofy (e.g., because we failed to parse $LANG correctly,
+# or because the user's language isn't one we support), then the language defaults
+# back to English anyway.
+
+if (!$quickie && (! -e $dir or ! -e $prefs_file)) {
+  run_first_time($preferences{'calendar'});
+}
+if (-e $prefs_file) {
+  UnicodeTools::file_is_valid_utf8($prefs_file) or die w('not_utf8',$prefs_file);
+  open (FILE,"<$prefs_file") or die w('error_opening_prefs',$prefs_file);
+  while (my $line = <FILE>) {
+    if ($line =~ m/^\s*(\w+)\s*\=\s*([^\s].*)*/) {
+      my ($option,$value) = ($1,$2);
+      $value =~ s/\s+$//; # strip trailing blanks
+      $preferences{lc($option)} = $value;
+      if (lc($option) eq 'future') {$explicitly_set_future=1}
+    }
+    else {
+      if (!($line =~ m/^\s*$/)) {die w('syntax_err_in_prefs',$prefs_file,$line)}
+    }
+  }
+  close FILE;
+}
+else {
+  do_output(w('prefs_file_not_found',$prefs_file)) if !$quickie;
+}
+
+#----------------------------------------------------------------
+# Some global variables.
+#----------------------------------------------------------------
+our $date_delimiter = ' '; # e.g. 2003 Feb 1
+our $use_month_names = 1;
+
+our @month_length =      (31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31);
+
+#----------------------------------------------------------------
+# Figure out what the user wants to do.
+#----------------------------------------------------------------
+
+my $cmds = '';
+
+foreach my $arg(@ARGV) {
+  if (! ($arg =~ m/^\-/)) {
+    $cmds = $cmds . lc($arg);
+  }
+}
+
+if (!$got_command_line_options) {
+  my $old_future = $preferences{'future'};
+  GetOptions(%command_line_options); # from Getops::Long
+  my $new_future = $preferences{'future'};
+  $explicitly_set_future ||= ($old_future != $new_future);
+}
+
+if ($preferences{'rows_auto'} && -t STDOUT) {
+  $preferences{'rows'} = Terminal::rows();
+}
+if ($explicitly_set_future) {
+  $preferences{'rows'} = 9999; # They explicitly set number of days into future, so don't chop it off.
+}
+
+my $want_styling = ($preferences{'styled_output'} && -t STDOUT) || ($preferences{'styled_output_if_not_tty'} && ! -t STDOUT);
+
+my @do_what = ();
+
+if ($cmds eq '') {$cmds = 'i'}
+
+my %periods = ('w'=>7,'m'=>31,'y'=>366);
+#loop over chars in arg:
+while ($cmds =~ m/(.)/g) {
+  my $cmd = $1;
+  my $recognized = 0;
+  if (exists $periods{$cmd}) {
+    $recognized = 1;
+    push @do_what,'normal';
+    $preferences{'future'} = $periods{$cmd};
+    $preferences{'rows'} = 9999; # If they say they want a year in advance, don't chop it off.
+  }
+  else {
+    if ($cmd eq 'd') {
+      $recognized = 1;
+      push @do_what,'date';
+    }
+    if ($cmd eq 'i') {
+      $recognized = 1;
+      push @do_what,'normal';
+    }
+    if ($cmd eq 'c') {
+      $recognized = 1;
+      push @do_what,'calendar';
+    }
+    if ($cmd eq 'e') {
+      $recognized = 1;
+      push @do_what,'edit';
+    }
+    if ($cmd eq 'j') {
+      $recognized = 1;
+      push @do_what,'modified_julian_day';
+    }
+  }
+  if (!$recognized) {
+    die w('illegal_command',$cmd);
+  }
+}
+
+# Setting the calendar file after the command-line options have been read
+my $file = glob $preferences{'calendar'};
+if (!$quickie && ! -e $file) {
+  run_first_time($file);
+}
+
+#----------------------------------------------------------------
+# Do it.
+#----------------------------------------------------------------
+
+my $now = When::current_date();
+if ($preferences{'now'} ne '') {
+  my $r = When::parse_blank_delimited($preferences{'now'});
+  if ($r->[0]) {
+    die w('date_syntax_error',$preferences{'now'});
+  }
+  $now = $r->[1];
+}
+
+if ($options{'help'}) {
+  print documentation();
+  exit(0);
+}
+
+if ($preferences{'test_expression'}) {
+  $preferences{'test_expression'} =~ m/^([^,]+),([^,]+),([^,]+),(.*)$/;
+  my ($date,$result,$expr,$comment) = ($1,$2,$3,$4);
+  # result is 0, 1, or e if an error is expected
+  my $expect_err = ($result=~m/e/i);
+  my $failure = sub {
+    my $info = shift;
+    print "Failed test\n  $comment\n";
+    print "  date=$date\n  expect_err=$expect_err\n  result=$result\n  expr=$expr\n";
+    print "$info\n";
+    exit(-1);
+  };
+  my $match = DateMatch->new('condition',$expr);
+  if ($match->{ERR} && ! $expect_err) {
+    my $err = $match->{ERR};
+    $failure->("unexpected error, $err");
+  }
+  if ((!($match->{ERR})) && $expect_err) {
+    $failure->("error expected, but none occurred");
+  }
+  if (!($match->{ERR})) {
+    my $x = When::parse_blank_delimited($date);
+    my $err = $x->[0];
+    $failure->("error parsing date $date, $err") if $err;
+    my $when = $x->[1];
+    my $got_result = $match->evaluate($when,{},$when->day_of_week);
+    $failure->("expected result '$result', got '$got_result'") if ($got_result xor $result);
+  }
+  exit(0);
+}
+
+if ($options{'version'}) {
+  print "When version $version, (c) 2003-2011 Benjamin Crowell.\nDo 'when --help' for help and copyleft information.\n";
+  exit(0);
+}
+if ($options{'bare_version'}) {
+  print $version;
+  exit(0);
+}
+if ($options{'make_filter_regex'}) {
+  print UnicodeTools::make_filter_regex()."\n";
+  exit(0);
+}
+if ($options{'test_accent_filtering'}) {
+  my @lingos = keys %month_name;
+  my @strings = (values(%month_name),values(%month_name_long),values(%wday_name));
+  foreach my $lingo(@lingos) {
+    my $save = $preferences{'language'};
+    $preferences{'language'} = $lingo;
+    @strings = (@strings,w('__give_all_strings'));
+    $preferences{'language'} = $save;
+  }
+  my $result = UnicodeTools::test_accent_filtering(@strings);
+  if ($result eq '') {
+    exit(0);
+  }
+  else {
+    print STDERR $result;
+    exit(-1);
+  }
+}
+
+my $first_one = 1;
+foreach my $cmd(@do_what) {
+  if (!$first_one) {
+    do_output("\n");
+  }
+  $first_one = 0;
+  if ($cmd eq 'date') {
+    do_output(describe_date()."\n");
+  }
+  if ($cmd eq 'normal') {
+    normal_behavior($now,$want_styling);
+  }
+  if ($cmd eq 'calendar') {
+    calendar(NOW=>$now,WANT_STYLING=>$want_styling,TODAY_STYLE=>$preferences{'calendar_today_style'},PAST=>$preferences{'past'},FUTURE=>$preferences{'future'});
+  }
+  if ($cmd eq 'edit') {
+    my $c = $preferences{'editor'}." ".$preferences{'calendar'};
+    unless(system($c)==0) {
+      print STDERR w('error_running_editor',$c,$!,$preferences{editor},$prefs_file);
+      exit(-1);
+    }
+  }
+  if ($cmd eq 'modified_julian_day') {
+    #print "The date ".$now->string_human()." corresponds to modified julian day ".$now->modified_julian_day().".\n";
+    print w('describe_julian_day',$now->string_human(),$now->modified_julian_day());
+  }
+}
+
+sub describe_date {
+  my $describe_wday = $now->day_of_week_name;
+  my $describe_today = $now->string_human();
+  my @tm = localtime;
+  my ($hour,$minute) = ($tm[2],$tm[1]);
+  $hour = (($hour-1) % 12)+1 if ($preferences{'ampm'});
+  my $describe_time = sprintf "%d:%02d",$hour,$minute;
+  return "$describe_wday $describe_today   $describe_time";
+}
+
+sub do_output {
+  my $x = shift;
+  print filter_accents_if_desired($x);
+}
+
+sub filter_accents_if_desired {
+  my $x = shift;
+  if ($preferences{'filter_accents_on_output'}) {
+    $x = UnicodeTools::filter_out_accents($x);
+  }
+  return $x;
+}
+
+#----------------------------------------------------------------
+# The program's normal behavior is to print out all your appointments
+# for a certain period (by default, the next two weeks).
+#----------------------------------------------------------------
+
+sub normal_behavior {
+  my $now = shift->clone;
+  my $want_styling = shift;
+
+  my $complete_output = '';
+  my $lines_done = 2; # header and blank line under it
+
+  if ($preferences{'header'}) {
+    $complete_output = $complete_output . filter_accents_if_desired(describe_date())."\n\n"; 
+    $lines_done += 2; # header and blank line under it
+  }
+
+  my @find_longest = (w('yesterday'),w('today'),w('tomorrow'));
+  for (my $day_num=1; $day_num<=7; $day_num++) {
+    push @find_longest,When::short_wday_name($day_num);
+  }  
+  my $max_wday_length = 8;
+  foreach my $day(@find_longest) {
+    my $length = AnsiTerminalStyling::length(filter_accents_if_desired($day)); # filter_accents_if_desired may change length of string
+    $max_wday_length = $length if $length>$max_wday_length;
+  }
+  
+  -r $file or die w('error_opening_calendar',$file);
+
+  # Make sure the calendar file is utf8. Horrible things happen if, e.g., it's iso-8859.
+  # This involves reading the file again. We do this after the original reading of the file,
+  # since that's where the error handling is if the file doesn't exist, etc.
+  UnicodeTools::file_is_valid_utf8($file) or die w('not_utf8',$file);
+
+  my $prefilter = $preferences{'prefilter'};
+  my $calendar_input;
+  if ($prefilter eq '') {
+    $calendar_input = "<$file";
+  }
+  else {
+    $calendar_input = "$prefilter <$file |";
+  }
+
+  open (FILE, $calendar_input) or die w('error_opening_calendar',$file);
+  my @lines = <FILE>; # in array context, returns all lines from file
+  close FILE or die w("error_prefiltering",$prefilter);
+
+  my @show;
+  my @condition_lines;
+
+  my $list_one = sub {
+    my $when = shift;
+    my $delta = shift;
+    my $what = shift;
+    my $describe = $when->day_of_week_name;
+    if ($delta == -1) {$describe = w('yesterday')}
+    if ($delta == 0) {$describe = AnsiTerminalStyling::style_text(w('today'),$preferences{'items_today_style'},$want_styling)}
+    if ($delta == 1) {$describe = w('tomorrow')}
+    $describe = filter_accents_if_desired($describe);
+    $describe = AnsiTerminalStyling::pad_to_desired_length($describe,$max_wday_length+1,' ');
+    my $say = sprintf "%s %s %s\n",$describe,$when->string_human,$what;
+    push @show,[$when->clone,$say,$what];
+  };
+  foreach my $line(@lines) {
+    chomp $line;
+    if ($line =~ m/^\s*([^,#]*)\s*,\s*(([^\s].*)?)/) {
+      my ($date,$what) = ($1,$3);
+      my $match;
+      my $exact = !($date=~m/[=<>%]/);        # exact includes both dates of the form "2008 jul 4" and those like "2008* jul 4" and "* jul 4"
+      my $literal = $exact && !($date=~/\*/); # literal means only dates of the form "2008 jul 4"
+      my $only_if_literal = $preferences{literal_only};
+      my $ignore = (!$literal) && $only_if_literal;
+      if (!$ignore) {
+        if ($exact) {
+          $match = DateMatch->new('exact',$date);
+          if ($match->{ERR} ne '') {
+            my $err = $match->{ERR};
+            do_output("****** $err\n******  $line\n\n");
+            return;
+          }
+        }
+        else {
+          $match = DateMatch->new('condition',$date);
+          if ($match->{ERR}) {
+            my $err = $match->{ERR};
+            do_output("****** $err\n******  $line\n\n");
+            return;
+          }
+        }
+        if ($match->{TYPE} eq 'condition') {
+          push @condition_lines,[$match,$what];
+        }
+        if ($match->{TYPE} eq 'exact') {
+          my $when = $match->{WHEN};
+          if ($when->y =~ m/\*/) {
+            my $that_year = '';
+            if ($when->y =~ m/(\d+)/) {$that_year=$1}; # "1996*" syntax
+            $when->y($now->y);
+            if ($when->delta_days($now)<$preferences{'past'}) {$when->y($when->y+1)}
+            if ($when->delta_days($now)>$preferences{'future'}) {$when->y($when->y-1)}
+            if ($when->y =~ m/(\d+)/) { 
+              my $years_since = $when->y()-$that_year;
+              $what =~ s/\\a/$years_since/g;
+              $what =~ s/\\y/$that_year/g;
+            }
+          }
+          my $delta = $when->delta_days($now);
+          if ($delta >= $preferences{'past'} && $delta <=$preferences{'future'}) {
+            &$list_one($when,$delta,$what);
+          }
+        }
+      } # end if not ignored
+    } # end if line has the syntax of a calendar entry
+    else {
+      if (!($line =~ m/^\s*$/ || $line =~ m/^#/)) {die w('syntax_error_in_calendar',$line)}
+    }
+  }
+
+  if (@condition_lines) {
+    my $then = $now->clone;
+    my ($d1,$d2) = ($preferences{'past'},$preferences{'future'});
+    $then->add_delta_days_in_place($d1);
+    my $day_of_week = $then->day_of_week;
+    for (my $delta=$d1; $delta<=$d2; $delta++) {
+      my %vars = ();
+      foreach my $cond(@condition_lines) {
+        my ($match,$what) = @$cond;
+        my $result = $match->evaluate($then,\%vars,$day_of_week);
+        &$list_one($then,$delta,$what) if $result;
+      } # end loop over condition lines
+      $then->increment_day_in_place();
+      $day_of_week = ($day_of_week%7)+1; # we go 1..7, not 0..6; this is like ((x-1+1)%7)+1
+    } # end loop over days
+  } # end if condition lines
+
+  # For purposes of sorting entries, we recognize when the text of an entry begins with a time in h:mm format, with an optional a or p for am or pm.
+  # This subroutine returns 9999 if the string doesn't begin with a time, or the time in minutes otherwise.
+  my $get_time = sub {
+    my $x = shift;
+    my $match_ampm = $preferences{'ampm'} ? '[ap]?' : '';
+    return 9999 unless $x =~ /^\s*(\d+):(\d+)($match_ampm)/i;
+    my ($h,$m,$am_pm) = ($1,$2,$3);
+    if (!$am_pm && $h<$preferences{'auto_pm'}) {$h+=12}
+    if ($am_pm=~/p/) {$h+=12}
+    return 9999 unless ($h<=23 && $m<=59);
+    return $h*60+$m;
+  };
+  @show = sort {
+    my $time_order =  $a->[0]->compare($b->[0]);
+    return $time_order if $time_order;
+    my ($txt_a,$txt_b) = ($a->[2],$b->[2]); # the texts of the two calendar entries
+    &$get_time($txt_a) <=> &$get_time($txt_b)
+                   # In the case where they're both times, this makes the earlier one come first.
+                   # In the case where one is a time and one isn't, the timed one comes first.
+                   # In the case where neither is timed, this also does the right thing.
+  } @show;
+
+  my $wrap = $preferences{'wrap'};
+  if ($wrap==0) {$wrap=9999}
+  if ($preferences{'wrap_auto'}) {
+    my $terminal_width = Terminal::columns();
+    if ($terminal_width>0) {$wrap=$terminal_width}
+  }
+  if ($preferences{'wrap_max'}>0 && $wrap>$preferences{'wrap_max'}) {
+    $wrap=$preferences{'wrap_max'}
+  }
+  my $rows = $preferences{'rows'};
+  if ($rows==0) {$rows=9999}
+  my $margin = $max_wday_length+14; # This is the width of the column containing the date.
+  if ($wrap<$margin+10) {$wrap=$margin+10} # otherwise you get an endless loop
+  foreach my $thing(@show) {
+    my ($when,$say) = @$thing;
+    my $output = format_item($say,$wrap,$margin);
+    $lines_done += split /\n/,$output;
+    last if $lines_done>$rows && $when->delta_days($now)>3;
+    $complete_output = $complete_output . filter_accents_if_desired($output);
+  }
+  my $did_it = 0;
+  if ($preferences{'paging'} && -t STDOUT && Terminal::rows()>0 && $lines_done>Terminal::rows()-1) {
+    my $pager = $ENV{PAGER};
+    if (!defined $pager) {$pager = "less"}
+    if ($pager eq 'less') {$pager = "$pager ".$preferences{'paging_less_options'}}
+    if (open(FILE,"| $pager")) {
+      print FILE $complete_output;
+      close FILE;
+      $did_it = 1;
+    }
+  }
+  if (!$did_it) {print $complete_output}
+}
+
+#----------------------------------------------------------------
+# Print a calendar.
+#----------------------------------------------------------------
+sub calendar {
+  my %args = (
+    NOW=>'',
+    WANT_STYLING=>0,
+    TODAY_STYLE=>'',
+    PAST=>0,
+    FUTURE=>0,
+    @_,
+  );
+
+  my $now = $args{NOW}->clone;
+  my $past = $args{PAST};
+  my $future = $args{FUTURE};
+
+  # Normally we just print out three months, next to each other horizontally.
+  # However, if the user specified some other time period than the default, we
+  # print out multiple rows, e.g., they may want a full year's worth of calendars (four lines).
+  # The following are generous limits -- we check more carefully later:
+  my $row_start = int($past/90)-2;
+  my $row_end = int($future/90)+2;
+
+  for (my $row=$row_start; $row<=$row_end; $row++) {
+
+    my $middle_month = $now->clone;
+    for (my $i=1; $i<=abs($row); $i++) {
+      if ($row<0) {
+        $middle_month->decrement_month_in_place();
+        $middle_month->decrement_month_in_place();
+        $middle_month->decrement_month_in_place();
+      }
+      if ($row>0) {
+        $middle_month->increment_month_in_place();
+        $middle_month->increment_month_in_place();
+        $middle_month->increment_month_in_place();
+      }
+    }
+    my $last_month = $middle_month->clone;
+    my $next_month = $middle_month->clone;
+    $last_month->decrement_month_in_place();
+    $next_month->increment_month_in_place();
+
+    # Check whether we really need to print this row in order to cover their chosen time period:
+    my $range_lo = $last_month->clone;
+    my $range_hi = $next_month->clone;
+    $range_lo->d(1);
+    $range_hi->d($range_hi->days_in_month);
+    my $needed = $range_hi->delta_days($now)-$past>=0 && $range_lo->delta_days($now)-$future<=0;
+
+    if ($needed) {    
+      my @cals;
+      for (my $i=-1; $i<=1; $i++) {
+        my $month = [$last_month,$middle_month,$next_month]->[$i+1];
+        my @cal =  make_one_month_calendar(WHEN=>$month,WANT_STYLING=>$args{WANT_STYLING},TODAY_STYLE=>$args{TODAY_STYLE},MARK_TODAY=>($i==0 && $row==0));
+        my $month_needed = 1;
+        if (!$preferences{'neighboring_months'}) {
+          my $first_day_of_month = $month->clone;
+          $first_day_of_month->d(1);
+          my $last_day_of_month = $month->clone;
+          $last_day_of_month->d($month->days_in_month);
+          $month_needed=0 if $first_day_of_month->delta_days($now)-$future>0 || $last_day_of_month->delta_days($now)-$past<0;
+        }
+        push @cals,\@cal if $month_needed;
+      }
+      do_output(combine_calendars_for_several_months(@cals));
+    } # end if $needed
+
+  } # end loop over $row
+
+}
+
+sub combine_calendars_for_several_months {
+      my @cals = @_;
+      my $output = '';
+      for (my $line_num=0; $line_num<=10; $line_num++) {
+        my $have_one = 0;
+        foreach my $cal(@cals) {
+          $have_one = $have_one || exists $cal->[$line_num];
+        }
+        if ($have_one) {
+          my $full_line = '';
+          foreach my $cal(@cals) {
+            my $part;
+            if (exists $cal->[$line_num]) {
+              $part = $cal->[$line_num];
+            }
+            else {
+              $part = (' ' x 21);  #### constant shouldn't be hardcoded
+            }
+            if ($full_line ne '') {$full_line = "$full_line  "}
+            $full_line = $full_line . $part;
+          }
+          $output = $output . $full_line . "\n";
+        }
+        else {
+          last
+        }
+      } # end loop over $line_num
+      return $output;
+}
+
+sub make_one_month_calendar {
+  my %args = (
+    MARK_TODAY=>0,
+    WANT_STYLING=>0,
+    TODAY_STYLE=>'',
+    @_,
+  );
+  my $when = $args{WHEN}->clone;
+  my $mark_today = $args{MARK_TODAY};
+  my @cal = ();
+
+  my $today = $when->clone;
+
+  my $columns = 21; # 3 columns for each day of the week
+
+  my $month_name_long = When::month_name_long($when->m);
+  # Pad it on the front and back so it's roughly centered:
+  my $pad_character = '-';
+  while (AnsiTerminalStyling::length($month_name_long)<$columns) {
+    if (AnsiTerminalStyling::length($month_name_long)%2==0) {
+      $month_name_long = "$month_name_long$pad_character";
+    }
+    else {
+      $month_name_long = "$pad_character$month_name_long";
+    }
+  }
+  push @cal,$month_name_long if $preferences{'header'};
+
+  my $line = '';
+  for (my $wday=1; $wday<=7; $wday++) {
+    $line = $line . ' '.When::short_wday_name($wday).' ';
+  }
+  push @cal,$line if $preferences{'header'};
+
+  $line = '';
+  $when->d(1);
+  for (my $wday=1; $wday<$when->day_of_week && $wday<=7; $wday++) {
+    $line = $line . '   ';
+  }
+  my $this_month = $when->m;
+  while ($when->m == $this_month) {
+    if ($when->day_of_week==1) {push @cal,$line; $line = ''}
+    my $display = sprintf('%2d',$when->d);
+    if ($when->compare($today)==0 && $mark_today) {
+      if ($args{WANT_STYLING} && $args{TODAY_STYLE} ne '') {
+        $display = AnsiTerminalStyling::style_text($display,$args{TODAY_STYLE},$args{WANT_STYLING});
+      }
+      else {
+        $display = ' *';
+      }
+    }
+    $line = "$line$display ";
+    $when->increment_day_in_place();
+  }
+  if ($line ne '') {push @cal,$line; $line = ''}
+
+  # Make sure all the lines are equal in length:
+  for (my $i=0; $i<=$#cal; $i++) {
+    my $line = $cal[$i];
+    while (AnsiTerminalStyling::length($line)<$columns) {
+      $line = "$line ";
+    }
+    $cal[$i] = $line;
+  }
+
+  return @cal;
+}
+
+
+#----------------------------------------------------------------
+# Help them set up the first time through.
+#----------------------------------------------------------------
+sub run_first_time {
+  my $cal_file = glob shift;
+
+  if (!(-t STDIN && -t STDOUT)) {
+    die w('first_time_not_tty');
+  }
+
+  print w('ask_if_set_up');
+  my $want_to = <STDIN>;
+  chomp $want_to;
+  if (lc($want_to) ne 'y') {exit(-1)}
+
+  my $dir = glob "~/.when";
+  if (! -d $dir) {
+    mkdir($dir) or die sprintf w('error_creating_dir'),$dir;
+  }
+
+  my $editor = $preferences{'editor'};
+  print w('ask_for_editor');
+  print "  $editor\n";
+  my $want_editor = <STDIN>;
+  chomp $want_editor;
+  if ($want_editor ne '') {$editor=$want_editor}
+
+  my $prefs = glob "~/.when/preferences";
+  if (! -e $prefs) {
+    open(PREFS,">$prefs") or die sprintf w('error_creating_prefs'),$prefs;
+    print PREFS "calendar = $cal_file\n";
+    print PREFS "editor = $editor\n";
+    close(PREFS);
+  }
+  if (! -e $cal_file) {
+    open(CAL,">$cal_file") or die w('error_creating_cal'),$cal_file;
+    close(CAL);
+  }
+
+  print w('getting_started');
+}
+
+#----------------------------------------------------------------
+# Routines for wrapping long lines:
+#----------------------------------------------------------------
+
+# Format a line of text for output. Wrap long lines nicely.
+sub format_item {
+  my $text = shift;
+  my $wrap = shift;
+  my $margin = shift;
+  chomp $text;
+  my @stuff = split_a_line($text,$wrap,2);
+  my $result = (shift @stuff)."\n";
+  my @the_rest = ();
+  if (@stuff) {
+    @the_rest = split_a_line((shift @stuff),$wrap-$margin,9999);
+  }
+  foreach my $line(@the_rest) {
+    $result = $result . (' ' x $margin) . "$line\n";
+  }
+  return $result;
+}
+
+# Split a long line into shorter pieces, preferably at word breaks. Do unicode->ascii
+# filtering here (if it's turned on), because sometimes filtering turns a single
+# unicode character to two ascii characters (e.g., Danish o_slash => oe).
+sub split_a_line {
+  my $text = shift;
+  my $width = shift;
+  my $max_pieces = shift;
+  if ($preferences{'filter_accents_on_output'}) {
+    $text = UnicodeTools::filter_out_accents($text); # see comment above
+  }
+  if (AnsiTerminalStyling::length($text)<=$width || $max_pieces==1) {return ($text,)}
+  if ($text =~ m/^(.{0,$width})(\s+(.*))?$/) {
+    my ($a,$b) = ($1,$3);
+    return ($a,split_a_line($b,$width,$max_pieces-1))
+  }
+  # The only reason we'd get to this point is if the input starts with an extremely long line
+  # consisting of one extremely long word with no blanks in it. This means we can't
+  # break at a word boundary. This typically happens with URLs.
+  $text =~ m/^(.{0,$width})(.*)$/;
+  my ($a,$b) = ($1,$2);
+  return ($a,split_a_line($b,$width,$max_pieces-1));
+}
+
+
+#----------------------------------------------------------------
+# A DateMatch object knows how to test whether a given date
+# matches it or not.
+#----------------------------------------------------------------
+package DateMatch;
+
+# Error handling: ERR field is set to a null string or a string containing a fully processed, internationalized error message
+sub new {
+  my $class = shift;
+  my $self = {};
+  bless($self,$class);
+  $self->{TYPE} = shift; # can be 'exact' or 'condition'
+  $self->{ERR} = undef;
+  my $source = shift;
+  if ($self->{TYPE} eq 'exact') {
+    my $parsed_date = When::parse_blank_delimited($source);
+    my ($err,$when) = @$parsed_date;
+    $self->{WHEN} = $when;
+    $err =~ s/\n$//;
+    $self->{ERR} = $err;
+    return $self;
+  }
+  if ($self->{TYPE} eq 'condition') {
+    $self->{SOURCE} = $source;
+    my $expr = compile_expression($source);
+    my $e = $expr->[0];
+    if (!defined $e) {$e = ''}
+    if (ref $e) {$e = main::w(@$e)}
+    $self->{ERR} = $e;
+    $self->{PARSED} = $expr->[1];
+    return $self;
+  } # end if it's a condition
+}
+
+sub evaluate {
+  my $self = shift;
+  my $when = shift;
+  my $vars = shift; # for efficiency; avoid recalculating these if possible
+  my $day_of_week = shift; # for efficiency, must be provided by caller
+  my @stack = ();
+  my $parsed = $self->{PARSED};
+  foreach my $rpn (@$parsed) {
+    #---- push variable onto stack
+    if ($rpn =~ m/^[a-z]$/) {
+      if ($rpn =~ m/^[abdjmywcez]$/) {
+        if (!exists $vars->{$rpn}) { 
+          # parser should have caught it if it wasn't one of these vars:
+          if ($rpn eq 'w') {$vars->{$rpn}=$day_of_week}
+          if ($rpn eq 'y') {$vars->{$rpn}=$when->y}
+          if ($rpn eq 'm') {$vars->{$rpn}=$when->m}
+          if ($rpn eq 'd') {$vars->{$rpn}=$when->d}
+          if ($rpn eq 'j') {$vars->{$rpn}=$when->modified_julian_day}
+          if ($rpn eq 'a') {$vars->{$rpn}=$when->week_a}
+          if ($rpn eq 'b') {$vars->{$rpn}=$when->week_b}
+          if ($rpn eq 'c') {$vars->{$rpn}=$when->adjacent_weekend_day}
+          if ($rpn eq 'e') {$vars->{$rpn}=Easter::easter($when->y)->delta_days($when)}
+          if ($rpn eq 'z') {$vars->{$rpn}=$when->day_of_year}
+        }
+        push @stack,$vars->{$rpn};
+      }
+      else {
+        die "Illegal variable $rpn in expression @$parsed"; # kludge, not internationalized; parser should have caught it before this anyway
+      }
+    }
+    #---- push constant onto stack
+    elsif ($rpn =~ m/^\d+$/) { push @stack, $rpn }
+    #---- unary op: !
+    elsif ($rpn eq '!') {
+      my $a = pop @stack;
+      push @stack, !$a;
+    }
+    #---- binary op: =, <, etc.
+    else {
+      my $b = pop @stack;
+      my $a = pop @stack; 
+      # the one that came first in the source is second to come off the stack
+      my $result;
+      if ($rpn eq '=') { $result = $a == $b }
+      elsif ($rpn eq '<') { $result = $a < $b }
+      elsif ($rpn eq '>') { $result = $a > $b }
+      elsif ($rpn eq '<=') { $result = $a <= $b }
+      elsif ($rpn eq '>=') { $result = $a >= $b }
+      elsif ($rpn eq '!=') { $result = $a != $b }
+      elsif ($rpn eq '%') { $result = $a % $b }
+      elsif ($rpn eq '-') { $result = $a - $b }
+      elsif ($rpn eq '&') { $result = $a && $b }
+      elsif ($rpn eq '|') { $result = $a || $b }
+      push @stack, $result;
+    }
+  } # end loop over RPN
+  return pop @stack;
+}
+
+sub priority($)  {
+  my $op = shift;
+  #if ($op eq '!') { return 1 }
+  if ($op eq '%') { return 2 }
+  if ($op eq '-') { return 3 }
+  if ($op eq '>' || $op eq '<' || $op eq '<=' || $op eq '>=') { return 4 }
+  if ($op eq '=' || $op eq '!=') { return 5 }
+  if ($op eq '!') { return 6 }
+  if ($op eq '&') { return 7 }
+  if ($op eq '|') { return 8 }
+  if ($op eq '(') { return 9 }
+  return 0;
+}
+
+# Error handling: first element of return value is either undef or an array to be passed to w() for internationalization.
+sub compile_expression { # a test such as 'm=dec & d=25'
+  my $source = lc shift;
+  my @ex = split / */, $source; # split into individual characters, stripping whitespace
+  my @rpn;
+  my @opst = ('(');	# bottom for the stack
+  my ($op, $op2, $pr, $err);
+
+  my $i = 0;
+  while ($i < @ex) {
+    my $single_alpha_token = ($ex[$i] =~ /[[:alpha:]]/ && $ex[$i+1] !~ /[[:alpha:]]/); # this char is alphabetic but the next char is not, i.e., we're looking at a one-character token
+    my $multiple_alpha_token = ($ex[$i] =~ /[[:alpha:]]/ && $ex[$i+1] =~ /[[:alpha:]]/);
+    my $left = $rpn[-1];
+    my $testing_equality = $i>0 &&  $ex[$i-1] =~ /^[=<>]$/;
+    my $expect_literal = ($left=~/^[mw]$/) && $testing_equality && $ex[$i] ne '='; # we're parsing the right-hand-side of something like m=jan or w=thu
+    #print "exi=$ex[$i],rpn=",(join('-',@rpn)),",rpn[-1]=$rpn[-1],left=$left,e=$expect_literal,s=$single_alpha_token,m=$multiple_alpha_token\n"; #qwe
+    if ($ex[$i] =~ /\d/) {
+      my $num = 0;
+      while ($i < @ex && $ex[$i] =~ /\d/) {
+	$num = 10 * $num + $ex[$i];
+	$i++;
+      }
+      push @rpn, $num;
+    }
+    elsif ($single_alpha_token && !$expect_literal) { 
+      if ($ex[$i] =~ /[abcdjmywez]/) { push @rpn, $ex[$i++] }
+      else {$err = ['illegal_var', $ex[$i++]] }
+    }
+    elsif ($multiple_alpha_token || $expect_literal) { # this is or should be a month or weekday literal like jan or thu
+      #print "expect literal, exi=$ex[$i],rpn=",(join('-',@rpn)),",rpn[-1]=$rpn[-1],left=$left,e=$expect_literal,s=$single_alpha_token,m=$multiple_alpha_token\n"; #qwe
+      if ($multiple_alpha_token && !$expect_literal) {return [['expression_syntax_error',$source],undef]} # literals like jan or thu can only appear on r.h.s. of m= or w=
+      my $lvar;
+      while ($i < @ex  && $ex[$i] =~ /[[:alpha:]]/) {
+	$lvar .= $ex[$i];
+	$i++;
+      }
+      # $left is guaranteed to be m or w at this point
+      if ($left eq 'm') {
+	my $parsed_month = When::parse_month_name($lvar);
+	if (!$parsed_month) {$err = ['illegal_month_in_expression',$lvar]}
+	$lvar = $parsed_month;
+      }
+      if ($left eq 'w') {
+	my $r = When::parse_wday_name($lvar);
+	if ($r->{'err'}) {
+          $err = [$r->{'err'},$lvar, $wday_name{$preferences{'language'}}];
+        }
+	$lvar = $r->{'match'};
+      }
+      push @rpn, $lvar; # $lvar may be null in cases like w=t, where t is ambiguous and causes an error
+    }
+    elsif ($ex[$i] eq '(') {
+      push @opst, '(';
+      $i++;
+    }
+    elsif ($ex[$i] eq ')') {
+      $op = pop @opst;
+      while ($op ne '(') {
+	push @rpn, $op;
+	$op = pop @opst;
+      }
+      $i++;
+    }
+    elsif ($ex[$i] eq '!' && $ex[$i+1] ne '=') {
+      # '!' has right associativity, so it is in a separate case
+      $pr = priority '!';
+      $op2 = pop @opst;
+      while ($pr > priority $op2) {
+	push @rpn, $op2;
+	$op2 = pop @opst;
+      }
+      push @opst, $op2;
+      push @opst, '!';
+      $i++;
+    }
+    elsif ($ex[$i] =~ /[!%\-\&\|<>=]/) {
+      $op = $ex[$i];
+      if ($op =~ /[\!<>]/ && $ex[$i+1] eq '=') {
+	$op .= '=';
+	$i++;
+      }
+      $pr = priority $op;
+      $op2 = pop @opst;
+      while ($pr >= priority $op2) {
+	push @rpn, $op2;
+	$op2 = pop @opst;
+      }
+      push @opst, $op2;
+      push @opst, $op;
+      $i++;
+    }
+    else { return  [['not_valid_expression',$source]] }
+  }
+  while ($op = pop @opst and $op ne '(') { push @rpn, $op }
+  if (@opst) { $err = ['not_valid_expression',$source] }
+  return [$err, \@rpn];
+}
+
+#----------------------------------------------------------------
+# A When object stores year, month, day, time (ymdt).
+# Month is 1..12
+# Time is null, or hour, or hour:min; hour is on 24-hour time.
+# There are methods for doing calculations with the Gregorian calendar.
+#----------------------------------------------------------------
+
+package When;
+
+
+sub new {
+  my $class = shift;
+  my $self = {};
+  bless($self,$class);
+  $self->{Y} = shift;
+  $self->{M} = shift;
+  $self->{D} = shift;
+  if (@_) {
+    $self->{T}=shift
+  }
+  else {
+    $self->{T} = '';
+  }
+  return $self;
+}
+
+# Returns [e,w], where w is a When object and e is a null string or a fully processed, internationalized error message
+sub parse_blank_delimited {
+  my $date = shift;
+  chomp $date;
+  my @a = split / +/,$date;
+  if ($#a+1!=3) {return [main::w('date_syntax_error',$date)]} # should have exactly three parts, y m d
+  if ($a[0] ne '*' && $a[0]<1900 || $a[0]>2100) {return [main::w('illegal_year',$a[0])]}
+  $a[1] = parse_month_name($a[1]);
+  if ($a[1] eq '' || $a[1]<1 || $a[1]>12) {return [main::w('illegal_month',$a[1])]}
+  if ($a[2]<1 || $a[2]>31) {return [main::w('illegal_day_of_month',$a[2])]}
+  return ['',When->new(@a)];
+}
+
+# can be number or name
+# if it's a name, ignores case, trailing dot, and extra characters not needed for uniqueness
+BEGIN {
+my %cache = (); # cache results, because this routine tends to be a cpu hog
+sub parse_month_name {
+  my $name = shift;
+  my $orig_name = $name;
+  if ($name =~ m/\d+/) {return $name}
+  return $cache{$name} if exists $cache{$name};
+  $name = UnicodeTools::filter_out_accents($name);
+  $name =~ s/\.$//; # remove trailing dot
+  my $language = $preferences{'language'};
+  # Special case for czech, where Cerven/Cervenec tie us up in knots:
+  if ($language eq 'cs') {
+    return 6 if lc($name) eq 'cer';
+    return 7 if lc($name) eq 'cec';
+  }
+  my @try_langs = ();
+  push @try_langs,$language if exists $month_name{$language};
+  if ($language ne 'en') {
+    push @try_langs,'en';
+  }
+  my %matches = ();
+  foreach my $try_lang(@try_langs) {
+    for (my $m=1; $m<=12; $m++) {
+      my $n = UnicodeTools::filter_out_accents(month_name_long($m,$try_lang));
+      if ($name =~ m/^$n/i || $n =~ m/^$name/i) {$matches{$m}=1}
+    }
+    my @matches = keys %matches;
+    if (@matches==1) {my $result = $matches[0]; $cache{$orig_name}=$result; return $result}
+    if (@matches>1) {return ''} # ambiguous
+  }
+  return '';
+}
+}
+
+# ignores case, trailing dot, and extra characters not needed for uniqueness
+sub parse_wday_name {
+  my $name = shift;
+  $name = UnicodeTools::filter_out_accents($name);
+  $name =~ s/\.$//; # remove trailing dot
+  my $language = $preferences{'language'};
+  my @try_langs = ();
+  push @try_langs,$language if exists $wday_name{$language};
+  if ($language ne 'en' || @try_langs==0) {
+    push @try_langs,'en';
+  }
+  my @matches = ();
+  my $n_matches = 0;
+  foreach my $try_lang(@try_langs) {
+    for (my $w=1; $w<=7; $w++) {
+      my $n = UnicodeTools::filter_out_accents(wday_name($w,$try_lang));
+      if ($name =~ m/^$n/i || $n =~ m/^$name/i) {push @matches,$w; ++$n_matches;}
+    }
+    if ($n_matches==1) { return {'match'=>$matches[0]}}
+    if ($n_matches>1) { return {'err'=>'not_unique_w_match'} } # ambiguous
+  }
+  return {'err'=>'no_w_match'};
+}
+
+sub clone {
+  my $self = shift;
+  return When->new($self->array);
+}
+
+sub array {
+  my $self = shift;
+  return ($self->y,$self->m,$self->d,$self->t);
+}
+
+sub y {
+  my $self = shift;
+  if (@_) {$self->{Y} = shift}
+  return $self->{Y};
+}
+
+sub m {
+  my $self = shift;
+  if (@_) {$self->{M} = shift}
+  return $self->{M};
+}
+
+sub d {
+  my $self = shift;
+  if (@_) {$self->{D} = shift}
+  return $self->{D};
+}
+
+sub t {
+  my $self = shift;
+  if (@_) {$self->{T} = shift}
+  return $self->{T};
+}
+
+sub hour {
+  my $self = shift;
+  my $t = $self->t;
+  $t =~ m/^\d+/;
+  return $1;
+}
+
+# returns null string if not set
+sub min {
+  my $self = shift;
+  my $t = $self->t;
+  if ($t =~ m/\d+\:(\d_)/) {
+    return $1;
+  }
+  else {
+    return '';
+  }
+}
+
+sub min_no_null {
+  my $self = shift;
+  my $m = $self->min;
+  if ($m eq '') {$m=0}
+  return $m;
+}
+
+sub current_date {
+    my @tm = localtime;
+    my $y = $tm[5];
+    my $m = $tm[4]+1;
+    my $d = $tm[3];
+    if ($y<1900) {$y=$y+1900} # works in Perl 5 and 6
+    return When->new($y,$m,$d);
+}
+
+
+sub string_sortable {
+  my $self = shift;
+  return sprintf "%04d-%02d-%02d %02d:%02d", $self->y,$self->m,$self->d,$self->hour,$self->min_no_null;
+}
+
+# y,m,d = numbers, m=1..12; t is h or h:m, on 24-hour time
+sub string_human {
+  my $when = shift;
+  my ($y,$m,$d,$t) = $when->array;
+  if ($use_month_names) {$m=month_name($m)}
+  if (length($d)==1) {$d=" $d"}
+  my $result = $y.$date_delimiter.$m.$date_delimiter.$d;
+  if ($t ne '') {$result = $result . ' '.time_string_human($t)}
+  return $result;
+}
+
+sub time_string_human {
+  my $self = shift;
+  my ($h,$m) = ($self->hour,$self->min);
+  my $suffix = '';
+  if ($preferences{ampm}) {
+    if ($h>12) {
+      $h=$h-12;
+      $suffix = 'pm'
+    }
+    else {
+      $suffix = 'am';
+    }
+  }
+  if ($m ne '') {
+    return sprintf '%d:%02d%s',$h,$m,$suffix;
+  }
+  else {
+    return sprintf '%d%s',$h,$suffix;
+  }
+}
+
+sub month_name {
+  my $m = shift;
+  return month_name_short_or_long($m,'short',@_);
+}
+
+sub month_name_long {
+  my $m = shift;
+  return month_name_short_or_long($m,'long',@_);
+}
+
+sub month_name_short_or_long {
+  my $m = shift;
+  my $short_or_long = shift;
+  my $list_of_names;
+  if ($short_or_long eq 'short') {
+    $list_of_names = \%month_name;
+  }
+  if ($short_or_long eq 'long') {
+    $list_of_names = \%month_name_long;
+  }
+  if (! ref $list_of_names) {return ''}
+  my $language = $preferences{'language'};
+  if (@_) {$language = shift}
+  if ($m<1 || $m>12) {return ''}
+  my $names;
+  if (exists $list_of_names->{$language}) {
+    $names = $list_of_names->{$language}
+  }
+  else {
+    $names = $list_of_names->{'en'};
+  }
+  my @names = split / /,$names;
+  return $names[$m-1];
+}
+
+sub wday_name {
+  my $d = shift;
+  my $lang;
+  if (@_) {
+    $lang = shift;
+  }
+  else {
+    $lang = $preferences{'language'};
+  }
+  if (!exists $wday_name{$lang}) {$lang='en'}
+  my $names = $wday_name{$lang};
+  if ($d<1 || $d>7) {return ''}
+  my @names = split / /,$names;
+  my $offset = $preferences{'monday_first'} ? 1 : 0; 
+  # FIXME -- shouldn't really be referring to this global
+  return $names[($d-1+$offset)%7];
+}
+
+sub short_wday_name {
+  my $d = shift;
+  if ($d<1 || $d>7) {return ''}
+  wday_name($d) =~ m/^(.)/; # extract first character
+  return $1;
+}
+
+sub compare {
+  my $a = shift;
+  my $b = shift;
+  if ($a->y != $b->y) {return $a->y <=> $b->y}
+  if ($a->m != $b->m) {return $a->m <=> $b->m}
+  return $a->d <=> $b->d;
+}
+
+sub increment_day_in_place {
+  my $self = shift;
+  $self->d($self->d+1);
+  if ($self->d <= $self->days_in_month()) {return}
+  $self->m($self->m+1);
+  $self->d(1);
+  if ($self->m <= 12) {return}
+  $self->y($self->y+1);
+  $self->m(1);
+}
+
+sub add_delta_days_in_place {
+  my $self = shift;
+  my $d = shift;
+  $self->d($self->d+$d);
+  while ($self->d > $self->days_in_month()) {
+    $self->d($self->d - $self->days_in_month());
+    $self->m($self->m+1);
+    if ($self->m > 12) {
+      $self->m(1);
+      $self->y($self->y+1);
+    }
+  }
+  while ($self->d < 1) {
+    $self->m($self->m-1);
+    if ($self->m < 1) {
+      $self->m(12);
+      $self->y($self->y-1);
+    }
+    $self->d($self->d + $self->days_in_month());
+  }
+}
+
+sub increment_month_in_place {
+  my $self = shift;
+  $self->m($self->m+1);
+  if ($self->m > 12) {
+    $self->y($self->y+1);
+    $self->m(1);
+  }
+  while ($self->d > $self->days_in_month()) {
+    $self->d($self->d-1)
+  }
+}
+
+sub decrement_month_in_place {
+  my $self = shift;
+  $self->m($self->m-1);
+  if ($self->m < 1) {
+    $self->y($self->y-1);
+    $self->m(12);
+  }
+  while ($self->d > $self->days_in_month()) {
+    $self->d($self->d-1)
+  }
+}
+
+sub modified_julian_day {
+  my $self = shift;
+  return $self->delta_days(When->new(2003,2,14))+52685;
+}
+
+sub day_of_year {
+  my $self = shift;
+  return $self->delta_days(When->new($self->y,1,1))+1;
+}
+
+sub week_a {
+  my $self = shift;
+  return int((($self->d)-1)/7)+1;
+}
+
+sub week_b {
+  my $self = shift;
+  return int(($self->days_in_month()-($self->d))/7)+1;
+}
+
+sub adjacent_weekend_day {
+  my $self = shift;
+  my $w = $self->day_of_week();
+  if ($w==2) {return ($self->d)-1}
+  if ($w==6) {return ($self->d)+1}
+  return -1;
+}
+
+sub delta_days {
+  my $a = shift;
+  my $b = shift;
+  my $compared = $a->compare($b);
+  if ($compared == 0) {return 0}
+  if ($compared == -1) {return -($b->delta_days($a))}
+  if ($a->d != 1 || $b->d !=1) {
+    my $aa = $a->clone;
+    my $bb = $b->clone;
+    $aa->{D} = 1;
+    $bb->{D} = 1;
+    return ($aa->delta_days($bb))+($a->d)-($b->d);
+  }
+  if ($a->m != 1 || $b->m !=1) {
+    my $aa = $a->clone;
+    my $bb = $b->clone;
+    my $correction = 0;
+    while ($aa->m > 1) {
+      $aa->m($aa->m-1);
+      $correction = $correction + $aa->days_in_month;
+    }
+    while ($bb->m > 1) {
+      $bb->m($bb->m-1);
+      $correction = $correction - $bb->days_in_month;
+    }
+    return ($aa->delta_days($bb))+$correction;
+  }
+  # From Jan 1 of one year to Jan 1 of another; $a is after $b
+    my $aa = $a->clone;
+    my $result = 0;
+    while ($aa->y > $b->y) {
+      $aa->y($aa->y-1);
+      if ($aa->is_leap_year) {
+        $result = $result+366;
+      }
+      else {
+        $result = $result+365;
+      }
+    }
+    return $result;
+}
+
+sub days_in_month {
+  my $self = shift;
+  if ($self->m != 2) {return $month_length[($self->m)-1]}
+  if ($self->is_leap_year) {
+    return 29;
+  }
+  else {
+    return 28;
+  }
+}
+
+sub is_leap_year {
+  my $self = shift;
+  my $y = $self->y;
+  if ($y%4!=0) {return 0}
+  if ($y%100!=0) {return 1}
+  if ($y%400!=0) {return 0}
+  return 1;
+}
+
+# Sun=1, ... Sat=7
+sub day_of_week {
+  my $self =shift;
+  my $offset = $preferences{'monday_first'} ? -1 : 0; # FIXME -- shouldn't really be referring to this global
+  return (($self->delta_days(When->new(2003,2,2))+$offset)%7)+1; # Compare against Feb. 2, 2003, which we know was a Sunday.
+}
+
+sub day_of_week_name {
+  my $self =shift;
+  return wday_name($self->day_of_week);
+}
+
+#----------------------------------------------------------------
+# ANSI terminal styling
+#----------------------------------------------------------------
+
+package AnsiTerminalStyling;
+
+sub style_text {
+  my $x = shift;
+  my $style = lc(shift);
+  my $are_you_sure = shift;
+  if (!$are_you_sure) {return $x}
+  my ($before,$after) = ('','');
+  while ($style =~ m/([a-z]+)/g) {
+    my $this_style = $1;
+    if (exists $ansi_terminal_styling{$this_style}) {
+      my $code=$ansi_terminal_styling{$this_style};
+      $before = "$before\e[${code}m";
+    }
+  }
+  if ($before ne '') {$after="\e[0m"}
+  return "$before$x$after";
+}
+
+sub length {
+  my $x = shift;
+  if (!($x =~ m/\e/)) {return length $x}
+  $x =~ s/\e\[\d+m//g;
+  return length $x;
+}
+
+sub pad_to_desired_length {
+  my $x = shift;
+  my $desired_length = shift;
+  my $pad_with = shift;
+  my $current_length = AnsiTerminalStyling::length($x);
+  if ($current_length>=$desired_length) {return $x}
+  return $x . ($pad_with x ($desired_length-$current_length));
+}
+
+#----------------------------------------------------------------
+# Unicode helper routines:
+#----------------------------------------------------------------
+
+package UnicodeTools;
+
+# Note that this may turn a single unicode character into two characters, e.g., with Danish o_slash going to 'oe'.
+sub filter_out_accents {
+  my $x = shift;
+  $x =~ tr/\x{c2}\x{c4}\x{ce}\x{d6}\x{da}\x{dc}\x{df}\x{e0}\x{e1}\x{e2}\x{e4}\x{e9}\x{ed}\x{ee}\x{f1}\x{f3}\x{f6}\x{fa}\x{fb}\x{fc}\x{fd}\x{2011}\x{105}\x{103}\x{102}\x{107}\x{10d}\x{10c}\x{11b}\x{119}\x{142}\x{144}\x{159}\x{158}\x{15b}\x{219}\x{218}\x{21b}\x{21a}\x{17a}\x{391}\x{3b1}\x{3ac}\x{392}\x{3b2}\x{393}\x{3b3}\x{394}\x{3b4}\x{395}\x{3b5}\x{3ad}\x{396}\x{3b6}\x{397}\x{3b7}\x{3ae}\x{399}\x{3b9}\x{3af}\x{39a}\x{3ba}\x{39b}\x{3bb}\x{39c}\x{3bc}\x{39d}\x{3bd}\x{39f}\x{3bf}\x{3cc}\x{3a0}\x{3c0}\x{3a1}\x{3c1}\x{3a3}\x{3c3}\x{3c2}\x{3a4}\x{3c4}\x{3a5}\x{3c5}\x{3cd}\x{3a6}\x{3c6}\x{3a7}\x{3c7}\x{3a9}\x{3c9}\x{3ce}/AAIOUUsaaaaeiinoouuuy-aaAccCeelnrrssStTzAaaBbggDdEeeZzHnnIiiKkLlMmNvOooPpRrSssTtYuuFfXxWww/;
+
+   # ... everything that translates into a single character
+  $x =~ s/\x{201c}/''/go;
+  $x =~ s/\x{ab}/<</go;
+  $x =~ s/\x{bb}/>>/go;
+  $x =~ s/\x{c5}/AA/go;
+  $x =~ s/\x{c6}/AE/go;
+  $x =~ s/\x{d8}/OE/go;
+  $x =~ s/\x{e5}/aa/go;
+  $x =~ s/\x{e6}/ae/go;
+  $x =~ s/\x{f8}/oe/go;
+  $x =~ s/\x{201e}/,,/go;
+  $x =~ s/\x{17c}/zz/go;
+  $x =~ s/\x{398}/Th/go;
+  $x =~ s/\x{3b8}/th/go;
+  $x =~ s/\x{39e}/Ks/go;
+  $x =~ s/\x{3be}/ks/go;
+  $x =~ s/\x{3a8}/Ps/go;
+  $x =~ s/\x{3c8}/ps/go;
+  return $x;
+}
+
+sub test_accent_filtering {
+  my @strings = @_;
+  my $result = '';
+  foreach my $x(@strings) {
+    chomp $x;
+    my $y = filter_out_accents($x);
+    while ($y=~/(\P{IsASCII})/g) {
+      $result = $result . "In the string '$x', the character $1 was not properly filtered by UnicodeTools::filter_out_accents().\n"
+    }
+  }
+  return $result;
+}
+
+sub make_filter_regex {
+  my $filter = filter();
+  my @a = sort keys %$filter;
+
+  my $from = '';
+  my $to = '';
+  my $doubles = '';
+  foreach my $a(@a) {
+    my $b = $filter->{$a};
+    my $hex = sprintf('%x',ord($a));
+    if ($a eq $b) {print "Warning, $a and $b are the same, in make_filter_regex.\n"}
+    if (length($b)==1) {
+      $from = $from . "\\x{$hex}";
+      $to = $to . $b;
+    }
+    else {
+      $doubles = $doubles . "  \$x =~ s/\\x{$hex}/$b/go;\n";
+    }
+  }
+  return "  \$x =~ tr/$from/$to/;\n   # ... everything that translates into a single character\n$doubles";
+}
+
+BEGIN {
+  my $filter;
+  sub filter {
+    return $filter if $filter;
+    my %filter = (
+                $e_acute=>'e',$A_uml=>'A',$a_uml=>'a',$O_uml=>'O',$o_uml=>'o',$U_uml=>'U',$u_uml=>'u',$s_zlig=>'s',$u_circumflex=>'u',
+                $a_polish=>'a',$c_polish=>'c',$e_polish=>'e',$l_polish=>'l',$n_polish=>'n',$o_polish=>'o',$s_polish=>'s',$z_polish=>'z',$zz_polish=>'zz',
+                $a_acute=>'a',$i_acute=>'i',$u_acute=>'u',$U_acute=>'U',$y_acute=>'y',$C_wedge=>'C',$c_wedge=>'c',$e_wedge=>'e',$R_wedge=>'r',$r_wedge=>'r',
+                $a_ring=>'aa',$A_ring=>'AA',$o_slash=>'oe',$O_slash=>'OE',$ae=>'ae',$AE=>'AE',$n_tilde=>'n',
+                # Greek. Note that some letters that look like latin really aren't.
+                'Α'=>'A','α'=>'a','ά'=>'a','Β'=>'B','β'=>'b','Γ'=>'g','γ'=>'g','Δ'=>'D','δ'=>'d','Ε'=>'E','ε'=>'e','έ'=>'e',
+                'Ζ'=>'Z','ζ'=>'z',
+                'Η'=>'H','η'=>'n','ή'=>'n','Θ'=>'Th','θ'=>'th',
+                'Ι'=>'I','ι'=>'i','ί'=>'i','Κ'=>'K','κ'=>'k','Λ'=>'L','λ'=>'l','Μ'=>'M','μ'=>'m','Ν'=>'N','ν'=>'v',
+                'Ξ'=>'Ks','ξ'=>'ks','Ο'=>'O','ο'=>'o','ό'=>'o',
+                'Π'=>'P','π'=>'p','Ρ'=>'R','ρ'=>'r','Σ'=>'S','σ'=>'s','ς'=>'s','Τ'=>'T','τ'=>'t','Υ'=>'Y','υ'=>'u','ύ'=>'u',
+                'Φ'=>'F','φ'=>'f','Χ'=>'X','χ'=>'x',
+                'Ψ'=>'Ps','ψ'=>'ps','Ω'=>'W','ω'=>'w','ώ'=>'w',    
+                # Romanian
+                $A_breve=>'A',$A_circumflex=>'A',$I_circumflex=>'I',$S_commabelow=>'S',$T_commabelow=>'T',
+                $a_breve=>'a',$a_circumflex=>'a',$i_circumflex=>'i',$s_commabelow=>'s',$t_commabelow=>'t',
+                $nonbreaking_hyphen=>'-',$quot_open=>',,',$quot_close=>"''",$quotalt_open=>'<<',$quotalt_close=>'>>'
+             );
+    $filter = \%filter;
+    return $filter;
+  }
+}
+
+sub file_is_valid_utf8 {
+  my $f = shift;
+  open(F,"<:raw",$f) or return 0;
+  local $/;
+  my $x=<F>;
+  close F;
+  return is_valid_utf8($x);
+}
+
+# What's passed to this routine has to be a stream of bytes, not a utf8 string in which the characters are complete utf8 characters.
+# That's why you typically want to call file_is_valid_utf8 rather than calling this directly.
+sub is_valid_utf8 {
+  my $x = shift;
+  return utf8::decode(my $dummy = $x);
+}
+
+#-----------------------------------------
+# Easter
+#-----------------------------------------
+
+package Easter;
+
+sub easter {
+  my $year = shift;
+  my $sub = $preferences{'orthodox_easter'} ? \&eastern_easter : \&western_easter;
+  return &$sub($year);
+}
+
+# The following code for Easter is based on Rick Measham's DateTime::Event::Easter module,
+#   http://search.cpan.org/dist/DateTime-Event-Easter/lib/DateTime/Event/Easter.pm ,
+# which is available under the same license as Perl itself, and therefore compatible with
+# the licensing scheme of When.
+# For testing, see: http://en.wikipedia.org/wiki/Easter#Date_of_Easter
+
+sub western_easter {
+  my $year = shift;
+  my $golden_number = $year % 19;
+  my $quasicentury = int($year / 100);
+  my $epact = ($quasicentury - int($quasicentury/4) - int(($quasicentury * 8 + 13)/25) + ($golden_number*19) + 15) % 30;
+  my $interval = $epact - int($epact/28)*(1 - int(29/($epact+1)) * int((21 - $golden_number)/11) );
+  my $weekday = ($year + int($year/4) + $interval + 2 - $quasicentury + int($quasicentury/4)) % 7;
+  my $offset = $interval - $weekday;
+  my $month = 3 + int(($offset+40)/44);
+  my $day = $offset + 28 - 31* int($month/4);
+  return When->new($year,$month,$day);
+}
+
+# The following algorithm for Eastern Orthodox Easter is from George Vlahavas:
+# If you put this in a
+# spreadsheet cell (gnumeric or openoffice calc will do):
+# =MOD(19*MOD(A1;19)+16;30)+MOD(2*MOD(A1;4)+4*MOD(A1;7)+6*MOD(19*MOD(A1;19)+16;30);7)+3
+# and you put the year in cell A1 you will get a number. If this number
+# is <=30 then that's the April day that Easter is for that year. If the
+# number is >30 then you need to subtract 30 from it and you will find
+# the day in May Easter is.
+
+sub eastern_easter {
+  my $year = shift;
+  my $day= 
+           (19*($year%19)+16)%30
+          +(
+              2*($year%4)
+             +4*($year%7)
+             +6*(
+                  (
+                    19*($year%19)+16
+                  )%30
+                )
+           )%7
+          +3;
+  my $month;
+  if ($day<=30) {$month=4} else {$month=5; $day=$day-30}
+  return When->new($year,$month,$day);
+}
+
+#-----------------------------------------
+# Terminal 
+#-----------------------------------------
+
+package Terminal;
+
+# Normally returns the number of columns on the output tty.
+# Return 0 if output isn't a tty.
+# Returns undef if it's unable to find the width.
+# Tries several methods, in an attempt to work on any platform, while being as
+# efficient as possible in most cases, and avoiding dependencies. This does *not*
+# introduce any dependencies on Term::ReadKey or Term::ReadLine unless you're
+# using a non-POSIX system; those are used only as last-ditch backup methods in
+# case, e.g., we're running Windows.
+sub columns {
+  return (get_data())[1];
+}
+
+sub rows {
+  return (get_data())[0];
+}
+
+BEGIN {
+my ($rows,$columns);
+my $initialized = 0;
+
+sub get_data {
+  initialize_data() unless $initialized;
+  return ($rows,$columns);
+}
+
+sub initialize_data {
+  $initialized = 1;
+  ($rows,$columns) = get_data_for_initialization();
+  $SIG{WINCH} = sub{$initialized=0}; # If the window gets resized, we get this signal.
+}
+
+# Return the number of rows and columns on the terminal.
+sub get_data_for_initialization {
+
+  return (0,0) unless -t STDOUT;
+
+  my ($r, $c, $dummy);
+
+  # The following works on linux, but seems to fail on freebsd.
+  # It works properly if the user resizes the terminal window while the program is running.
+  # No longer works in perl 5.10, so disabled with "0 &&".
+  # http://search.cpan.org/src/RGARCIA/perl-5.10.0/h2pl/README
+  if (0 && eval "require 'sys/ioctl.ph'") {
+    eval {
+      # All of the dies on the next few lines will be caught by the eval{}.
+      die unless defined &TIOCGWINSZ;
+      open(TTY, "+</dev/tty") or die;
+      my $winsize;
+      die unless ioctl(TTY, &TIOCGWINSZ, $winsize='');
+      ($r, $c, $dummy, $dummy) = unpack('S4', $winsize);
+      return ($r,$c);
+    }
+  }
+
+  # A less efficient fallback, should work on anything unixy.
+  chomp(my @lines = `stty -a`);
+  for (@lines) {
+      $r = $1 if /rows (\d+);/;       # linux
+      $r = $1 if /(\d+) rows;/;       # FreeBSD
+      $c = $1 if /columns (\d+);/; # linux
+      $c = $1 if /(\d+) columns;/; # FreeBSD
+  }
+  return ($r,$c) if ((defined $c) && (defined $r));
+
+  # The following two methods give us a fighting chance on a non-POSIX system. I don't use them as the defaults
+  # because I don't want to introduce dependencies.
+
+  # http://search.cpan.org/~kjalb/TermReadKey/ReadKey.pm
+  # Term::ReadKey is not a standard Perl module, and may not be installed. If the user resizes the terminal
+  # while the program is running, this will correctly reflect the resizing.
+  eval 'use Term::ReadKey; ($c, $r, $dummy, $dummy) = GetTerminalSize();';
+  return ($r,$c) if ((defined $c) && (defined $r));
+
+  # http://search.cpan.org/~nwclark/perl-5.8.8/lib/Term/ReadLine.pm
+  # Term::ReadLine is a standard Perl module, but exists in different implementations under the hood. On a Linux
+  # system, it's implemented using Term::ReadLine::Gnu, which supports get_screen_size(). On a default FreeBSD system,
+  # however, the following won't work; you'd have to install the p5-ReadLine-Gnu package to get support for this function.
+  eval 'use Term::ReadLine; $term = new Term::ReadLine("foo"); ($r,$c)= Term::ReadLine::get_screen_size();';
+  return ($r,$c) if ((defined $c) && (defined $r));
+
+  return undef;
+}
+}

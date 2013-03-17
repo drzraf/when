@@ -3,7 +3,7 @@
 #----------------------------------------------------------------
 # Version number
 #----------------------------------------------------------------
-our $version = "1.1.30"; 
+our $version = "1.1.31"; 
 
 #----------------------------------------------------------------
 # Short documentation
@@ -926,10 +926,14 @@ our %wday_name =
 # user's chosen language.
 #------------------------------------------------------------------------
 sub w {
-  my $what = shift;
+  my $what = shift; # can be either a string representing a key, or [key,language]
   my @stuff = @_;
   my $lingo = $preferences{'language'};
   my %strings;
+  if (ref $what) {
+    $lingo = $what->[1];
+    $what = $what->[0];
+  }
   if ($lingo eq 'it' ) { # Italian (thanks to Mario)
     %strings = 
       (
@@ -1020,12 +1024,14 @@ sub w {
     } elsif ($lingo eq 'de' ) { # German (thanks to Chis Mager)
         %strings = 
       (
-        'date_syntax_error'=>("Das Datum %s ist nicht im ben${o_uml}tigten Format ('y m d'), die drei Teile sind durch Leerzeichen getrennt."),
-        'error_opening_prefs'=>("Die Preferences-Datei %s existiert zwar, aber es trat ein Fehler beim ${O_uml}ffnen auf."),
-        'syntax_err_in_prefs'=>("Syntaxfehler in der Preferences-Datei %s:\n%s"),
-        'prefs_file_not_found'=>("Preferences-Datei %s nicht gefunden.\n"),
+        'date_syntax_error'=>("Das Datum %s ist nicht im ben${o_uml}tigten Format 'y m d' (Jahr Monat Tag, die drei Teile sind durch Leerzeichen getrennt)."),
+        'error_opening_prefs'=>("Die Konfigurationsdatei %s existiert zwar, aber es trat ein Fehler beim ${O_uml}ffnen auf."),
+        'syntax_err_in_prefs'=>("Syntaxfehler in der Konfigurationsdatei %s:\n%s"),
+        'prefs_file_not_found'=>("Konfigurationsdatei %s nicht gefunden.\n"),
         'illegal_command'=>("Ung${u_uml}ltige Anweisung: %s\n"),
         'error_opening_calendar'=>("Konnte die Datei %s nicht ${o_uml}ffnen.\n"),
+        'error_prefiltering'=>"Konnte den Vorfilter nicht ausführen %s\n",
+        'not_utf8'=>"Die Datei %s scheint nicht in UTF-8 (oder ASCII, einer Teilmenge von UTF-8) kodiert zu sein. Das UNIX-Tool 'file' kann wahrscheinlich den Zeichensatz der Datei ermitteln.\n",
         'yesterday'=>'Gestern',
         'today'=>'Heute',
         'tomorrow'=>'Morgen',
@@ -1039,15 +1045,17 @@ sub w {
         'error_creating_dir'=>("Fehler beim Anlegen des Verzeichnisses %s\n"),
         'ask_for_editor'=>("Sie k${o_uml}nnen den Kalender mit Ihren Lieblings-Editor bearbeiten. Bitte geben Sie dazu den Befehl zum Starten des Editors ein\n"
                            ."oder dr${u_uml}cken Sie ENTER, um den Standardwert zu akzeptieren:\n"),
-        'error_creating_prefs'=>("Fehler beim Anlegen der Kalender Datei %s\n"),
-        'error_creating_cal'=>("Fehler beim Anlegen der Preferences-Datei %s\n"),
+        'error_creating_prefs'=>("Fehler beim Anlegen der Kalenderdatei %s\n"),
+        'error_creating_cal'=>("Fehler beim Anlegen der Konfigurationsdatei %s\n"),
         'getting_started'=>("Sie k${o_uml}nnen Ihrem Kalender jetzt Termine hinzuf${u_uml}gen. F${u_uml}hren Sie ``when --help'' f${u_uml}r weitere Informationen aus.\n"),
         'not_unique_w_match'=>("Es konnte kein eindeutiger Tag f${u_uml}r %s bestimmt werden. M${o_uml}gliche Tage: %s"),
-        'no_w_match'=>("%s stimmt mit keinem der Folgenden Tage ${u_uml}berein: %s"),
+        'no_w_match'=>("%s stimmt mit keinem der folgenden Tage ${u_uml}berein: %s"),
         'not_valid_expression'=>("%s ist kein g${u_uml}ltiges Datum oder Ausdruck."),
         'illegal_var'=>("Ung${u_uml}ltige Variable: %s"),
         'illegal_month_in_expression'=>("Ung${u_uml}ltiger Monat im Ausdruck: %s"),
         'expression_syntax_error'=>("Syntaxfehler: %s"),
+        'error_running_editor'=>("Fehler beim Ausführen des Befehls %s, %s. Möglicherweise ist %s nicht installiert?\n Sie haben diesen Befehl in der Datei %s konfiguriert.\n"),
+        'describe_julian_day'=>"Das Datum %s entspricht dem julianischen Datum %d.\n",
       )
     } elsif ($lingo eq 'cs' ) { # Czech
          %strings = 
@@ -1317,7 +1325,7 @@ sub w {
       )
     }
   if ($what eq '__give_all_strings') {return values %strings} # used by UnicodeTools::collect_all_strings()
-  if (exists $strings{$what}) {$what = $strings{$what}}
+  if (exists $strings{$what}) {$what = $strings{$what}} else {$what = w([$what,'en'],@stuff)} # fall back to English
   return sprintf($what,@stuff);
 }
 

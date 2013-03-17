@@ -5,8 +5,8 @@
 #    make test
 #    make debian (see password file for password)
 #    make post
-#    touch /home/bcrowell/Documents/web/source/when/when.source
-#    cd /home/bcrowell/Documents/web/source && make
+#    Update version numbers on web page (no longer made from .source file).
+#    git: commit and push
 # Update it on freecode.com.
 # Updating manpage doesn't work right, for reasons I don't understand. M4 seems to remember
 # the previous version of manpage.txt rather than reading it in afresh. To work around this,

@@ -3,7 +3,7 @@
 #----------------------------------------------------------------
 # Version number
 #----------------------------------------------------------------
-our $version = "1.1.31"; 
+our $version = "1.1.32"; 
 
 #----------------------------------------------------------------
 # Short documentation
@@ -625,6 +625,13 @@ B<$HOME>/.when/calendar - The default location for the
 user's calendar (pointed to by the preferences file)
 
 B<$HOME>/.when/preferences - The user's preferences.
+
+=head1 BUGS
+
+The filename of the calendar file cannot have unicode in it.
+This is because perl's File::Glob::glob() function does not
+support unicode properly. See http://perl5.git.perl.org/perl.git/blob/HEAD:/Porting/todo.pod
+and http://stackoverflow.com/questions/18436275/should-perls-fileglob-always-be-post-filtered-through-utf8decode .
 
 =head1 OTHER INFORMATION
 
@@ -1559,7 +1566,7 @@ if ($options{'test_accent_filtering'}) {
     @strings = (@strings,w('__give_all_strings'));
     $preferences{'language'} = $save;
   }
-  my $result = UnicodeTools::test_accent_filtering(@strings);
+  my $result = UnicodeTools::test_accent_filtering(@strings); # All this does is make sure it ends up pure ascii.
   if ($result eq '') {
     exit(0);
   }
@@ -1665,7 +1672,7 @@ sub normal_behavior {
 
   open (FILE, $calendar_input) or die w('error_opening_calendar',$file);
   my @lines = <FILE>; # in array context, returns all lines from file
-  close FILE or die w("error_prefiltering",$prefilter);
+  close FILE or die w("error_prefiltering",$calendar_input);
 
   my @show;
   my @condition_lines;
@@ -2193,7 +2200,6 @@ sub compile_expression { # a test such as 'm=dec & d=25'
     my $left = $rpn[-1];
     my $testing_equality = $i>0 &&  $ex[$i-1] =~ /^[=<>]$/;
     my $expect_literal = ($left=~/^[mw]$/) && $testing_equality && $ex[$i] ne '='; # we're parsing the right-hand-side of something like m=jan or w=thu
-    #print "exi=$ex[$i],rpn=",(join('-',@rpn)),",rpn[-1]=$rpn[-1],left=$left,e=$expect_literal,s=$single_alpha_token,m=$multiple_alpha_token\n"; #qwe
     if ($ex[$i] =~ /\d/) {
       my $num = 0;
       while ($i < @ex && $ex[$i] =~ /\d/) {
@@ -2207,7 +2213,6 @@ sub compile_expression { # a test such as 'm=dec & d=25'
       else {$err = ['illegal_var', $ex[$i++]] }
     }
     elsif ($multiple_alpha_token || $expect_literal) { # this is or should be a month or weekday literal like jan or thu
-      #print "expect literal, exi=$ex[$i],rpn=",(join('-',@rpn)),",rpn[-1]=$rpn[-1],left=$left,e=$expect_literal,s=$single_alpha_token,m=$multiple_alpha_token\n"; #qwe
       if ($multiple_alpha_token && !$expect_literal) {return [['expression_syntax_error',$source],undef]} # literals like jan or thu can only appear on r.h.s. of m= or w=
       my $lvar;
       while ($i < @ex  && $ex[$i] =~ /[[:alpha:]]/) {
@@ -2755,11 +2760,50 @@ sub pad_to_desired_length {
 package UnicodeTools;
 
 # Note that this may turn a single unicode character into two characters, e.g., with Danish o_slash going to 'oe'.
+# It doesn't just do what it says, it basically transliterates everything into ascii, e.g., Greek
+# lambda becomes l.
+# This gets tested by "when --test_accent_filtering", which is done by "make test".
 sub filter_out_accents {
   my $x = shift;
-  $x =~ tr/\x{c2}\x{c4}\x{ce}\x{d6}\x{da}\x{dc}\x{df}\x{e0}\x{e1}\x{e2}\x{e4}\x{e9}\x{ed}\x{ee}\x{f1}\x{f3}\x{f6}\x{fa}\x{fb}\x{fc}\x{fd}\x{2011}\x{105}\x{103}\x{102}\x{107}\x{10d}\x{10c}\x{11b}\x{119}\x{142}\x{144}\x{159}\x{158}\x{15b}\x{219}\x{218}\x{21b}\x{21a}\x{17a}\x{391}\x{3b1}\x{3ac}\x{392}\x{3b2}\x{393}\x{3b3}\x{394}\x{3b4}\x{395}\x{3b5}\x{3ad}\x{396}\x{3b6}\x{397}\x{3b7}\x{3ae}\x{399}\x{3b9}\x{3af}\x{39a}\x{3ba}\x{39b}\x{3bb}\x{39c}\x{3bc}\x{39d}\x{3bd}\x{39f}\x{3bf}\x{3cc}\x{3a0}\x{3c0}\x{3a1}\x{3c1}\x{3a3}\x{3c3}\x{3c2}\x{3a4}\x{3c4}\x{3a5}\x{3c5}\x{3cd}\x{3a6}\x{3c6}\x{3a7}\x{3c7}\x{3a9}\x{3c9}\x{3ce}/AAIOUUsaaaaeiinoouuuy-aaAccCeelnrrssStTzAaaBbggDdEeeZzHnnIiiKkLlMmNvOooPpRrSssTtYuuFfXxWww/;
 
-   # ... everything that translates into a single character
+
+  # First do everything that translates into a single character:
+
+  if (0) {
+    # Wrong: tr goes byte by byte, so this gave wrong results on, e.g., lowercase lambda:
+    $x =~ tr/\x{c2}\x{c4}\x{ce}\x{d6}\x{da}\x{dc}\x{df}\x{e0}\x{e1}\x{e2}\x{e4}\x{e9}\x{ed}\x{ee}\x{f1}\x{f3}\x{f6}\x{fa}\x{fb}\x{fc}\x{fd}\x{2011}\x{105}\x{103}\x{102}\x{107}\x{10d}\x{10c}\x{11b}\x{119}\x{142}\x{144}\x{159}\x{158}\x{15b}\x{219}\x{218}\x{21b}\x{21a}\x{17a}\x{391}\x{3b1}\x{3ac}\x{392}\x{3b2}\x{393}\x{3b3}\x{394}\x{3b4}\x{395}\x{3b5}\x{3ad}\x{396}\x{3b6}\x{397}\x{3b7}\x{3ae}\x{399}\x{3b9}\x{3af}\x{39a}\x{3ba}\x{39b}\x{3bb}\x{39c}\x{3bc}\x{39d}\x{3bd}\x{39f}\x{3bf}\x{3cc}\x{3a0}\x{3c0}\x{3a1}\x{3c1}\x{3a3}\x{3c3}\x{3c2}\x{3a4}\x{3c4}\x{3a5}\x{3c5}\x{3cd}\x{3a6}\x{3c6}\x{3a7}\x{3c7}\x{3a9}\x{3c9}\x{3ce}/AAIOUUsaaaaeiinoouuuy-aaAccCeelnrrssStTzAaaBbggDdEeeZzHnnIiiKkLlMmNvOooPpRrSssTtYuuFfXxWww/;
+  }
+
+  my @t = (
+    ["\x{c2}",'A'],["\x{c4}",'A'],["\x{ce}",'I'],["\x{d6}",'O'],["\x{da}",'U'],
+    ["\x{dc}",'U'],["\x{df}",'s'],["\x{e0}",'a'],["\x{e1}",'a'],["\x{e2}",'a'],
+    ["\x{e4}",'a'],["\x{e9}",'e'],["\x{ea}",'e'],["\x{ed}",'i'],["\x{ee}",'i'],["\x{f1}",'n'],
+    ["\x{f3}",'o'],["\x{f6}",'o'],["\x{fa}",'u'],["\x{fb}",'u'],["\x{fc}",'u'],
+    ["\x{fd}",'y'],["\x{2011}",'-'],["\x{105}",'a'],["\x{103}",'a'],["\x{102}",'A'],
+    ["\x{107}",'c'],["\x{10d}",'c'],["\x{10c}",'C'],["\x{11b}",'e'],["\x{119}",'e'],
+    ["\x{142}",'l'],["\x{144}",'n'],["\x{159}",'r'],["\x{158}",'r'],["\x{15b}",'s'],
+    ["\x{219}",'s'],["\x{218}",'S'],["\x{21b}",'t'],["\x{21a}",'T'],["\x{17a}",'z'],
+    ["\x{391}",'A'],["\x{3b1}",'a'],["\x{3ac}",'a'],["\x{392}",'B'],["\x{3b2}",'b'],
+    ["\x{393}",'g'],["\x{3b3}",'g'],["\x{394}",'D'],["\x{3b4}",'d'],["\x{395}",'E'],
+    ["\x{3b5}",'e'],["\x{3ad}",'e'],["\x{396}",'Z'],["\x{3b6}",'z'],["\x{397}",'H'],
+    ["\x{3b7}",'n'],["\x{3ae}",'n'],["\x{399}",'I'],["\x{3b9}",'i'],["\x{3af}",'i'],
+    ["\x{39a}",'K'],["\x{3ba}",'k'],["\x{39b}",'L'],["\x{3bb}",'l'],["\x{39c}",'M'],
+    ["\x{3bc}",'m'],["\x{39d}",'N'],["\x{3bd}",'v'],["\x{39f}",'O'],["\x{3bf}",'o'],
+    ["\x{3cc}",'o'],["\x{3a0}",'P'],["\x{3c0}",'p'],["\x{3a1}",'R'],["\x{3c1}",'r'],
+    ["\x{3a3}",'S'],["\x{3c3}",'s'],["\x{3c2}",'s'],["\x{3a4}",'T'],["\x{3c4}",'t'],
+    ["\x{3a5}",'Y'],["\x{3c5}",'u'],["\x{3cd}",'u'],["\x{3a6}",'F'],["\x{3c6}",'f'],
+    ["\x{3a7}",'X'],["\x{3c7}",'x'],["\x{3a9}",'W'],["\x{3c9}",'w'],["\x{3ce}",'w']
+  );
+
+  my $b = '';
+  foreach my $c(split('',$x)) {
+    foreach my $t(@t) {
+      if ($c eq $t->[0]) {$c=$t->[1]}
+    }
+    $b = $b . $c;
+  }
+  $x = $b;
+
   $x =~ s/\x{201c}/''/go;
   $x =~ s/\x{ab}/<</go;
   $x =~ s/\x{bb}/>>/go;
@@ -2787,7 +2831,9 @@ sub test_accent_filtering {
     chomp $x;
     my $y = filter_out_accents($x);
     while ($y=~/(\P{IsASCII})/g) {
-      $result = $result . "In the string '$x', the character $1 was not properly filtered by UnicodeTools::filter_out_accents().\n"
+      my $c = $1;
+      my $describe_c = sprintf("%04x", ord($c));
+      $result = $result . "In the string '$x', the character $1, character code 0x$describe_c, was not properly filtered by UnicodeTools::filter_out_accents().\n"
     }
   }
   return $result;

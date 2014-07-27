@@ -889,7 +889,7 @@ our %month_name_long =
     # Polish:
     'pl'=>"Stycze${n_polish} Luty Marzec Kwiecie${n_polish} Maj Czerwiec Lipiec Sierpie${n_polish} Wrzesie${n_polish} Pa${z_polish}dziernik Listopad Grudzie${n_polish}",
     # French:
-    'fr'=>"Janvier F${e_acute}vrier Mars Avril Mai Jiun Juillet Ao${u_circumflex}t Septembre Octobre Novembre D${e_acute}cembre",
+    'fr'=>"Janvier F${e_acute}vrier Mars Avril Mai Juin Juillet Ao${u_circumflex}t Septembre Octobre Novembre D${e_acute}cembre",
     # Italian:
     'it'=>'Gennaio Febbraio Marzo Aprile Maggio Giugno Luglio Agosto Settembre Ottobre Novembre Dicembre', 
     # German:

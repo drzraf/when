@@ -1,13 +1,12 @@
 # making a new version:
 #    change version number near top of program
-#    change version number in *TWO PLACES* in /home/bcrowell/Documents/web/source/when/when.source
+#    [doesn't work: change version number in *TWO PLACES* in /home/bcrowell/Documents/web/source/when/when.source]
 #    make install (so make test will run the right version)
 #    make test
 #    make debian (see password file for password)
 #    make post
 #    Update version numbers on web page (no longer made from .source file).
 #    git: commit and push
-# Update it on freecode.com.
 # Updating manpage doesn't work right, for reasons I don't understand. M4 seems to remember
 # the previous version of manpage.txt rather than reading it in afresh. To work around this,
 # need to rename it to something other than manpage.txt, alter the when.source file to refer

@@ -1155,7 +1155,7 @@ sub w {
         'ask_for_editor'=>("Du kan nu redigera din kalender med valfri editor. Mata in det kommando som du vill anv${a_uml}nda f${o_uml} redigering\n"
                            ."eller tryck Return f${o_uml}r att godk${a_uml}nna detta f${o_uml}rval:\n"),
         'error_creating_prefs'=>"Filen %s kunde ej skapas\n",
-        'error_creating_cal'=>"Filen %s kunde en skapas\n",
+        'error_creating_cal'=>"Filen %s kunde ej skapas\n",
         'getting_started'=>("Du kan nu l${a_uml}gga till poster i din kalenderfil. K${o_slash}r ``when --help'' f${o_uml} mer information.\n"),
         'not_unique_w_match'=>'%s matchar inte en unik veckodag. M${o_uml}jliga dagar: %s',
         'no_w_match'=>"%s matchar inte en av f${o_uml}ljande veckodagar: %s",

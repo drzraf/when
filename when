@@ -3,7 +3,7 @@
 #----------------------------------------------------------------
 # Version number
 #----------------------------------------------------------------
-our $version = "1.1.34"; 
+our $version = "1.1.35"; 
 
 #----------------------------------------------------------------
 # Short documentation
@@ -2357,11 +2357,13 @@ sub parse_blank_delimited {
   chomp $date;
   my @a = split / +/,$date;
   if ($#a+1!=3) {return [main::w('date_syntax_error',$date)]} # should have exactly three parts, y m d
-  if ($a[0] ne '*' && $a[0]<1900 || $a[0]>2100) {return [main::w('illegal_year',$a[0])]}
+  if ($a[0] ne '*' && ($a[0]<1900 || $a[0]>2100)) {return [main::w('illegal_year',$a[0])]}
   $a[1] = parse_month_name($a[1]);
   if ($a[1] eq '' || $a[1]<1 || $a[1]>12) {return [main::w('illegal_month',$a[1])]}
-  if ($a[2]<1 || $a[2]>$month_length[$a[1]-1]) {return [main::w('illegal_day_of_month',$date)]}
-  return ['',When->new(@a)];
+  my $w = When->new(@a);
+  my $len = $w->days_in_month; # returns 29 if input is * feb 29
+  if ($a[2]<1 || $a[2]>$len) {return [main::w('illegal_day_of_month',$date)]}
+  return ['',$w];
 }
 
 # can be number or name
@@ -2729,7 +2731,7 @@ sub delta_days {
 sub days_in_month {
   my $self = shift;
   if ($self->m != 2) {return $month_length[($self->m)-1]}
-  if ($self->is_leap_year) {
+  if ($self->y eq '*' || $self->is_leap_year) { # I use this routine for error checking; * feb 29 is OK.
     return 29;
   }
   else {

@@ -708,7 +708,7 @@ our %preferences=(
   'paging_less_options'=>'-rXFE',   # Extra options for the pager, if the pager is "less."
   'editor'=>'emacs -nw',            # editor
   'now'=>'',                        # pretend it's some other day today
-  'filter_accents_on_output'=>!($ENV{TERM}=~m/(mlterm|xterm)/),
+  'filter_accents_on_output'=>!($ENV{TERM}=~m/(mlterm|xterm|rxvt)/),
                                     # since most Unix terminals show accented Unicode chars as garbage
   'styled_output'=>1,               # Do they want ANSI styling if the output is a TTY?
   'styled_output_if_not_tty'=>0,    # Do they want ANSI styling if the output isn't a TTY?
